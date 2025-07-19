@@ -3,10 +3,18 @@ import type { User, Conversation } from '@/api/generated'
 import {
   conversationsApiApiListConversations,
   conversationsApiApiGetUsers,
+  conversationsApiApiPatchConversation,
 } from '@/api/generated'
 import AppHeader from '@/components/layout/AppHeader'
 import { Button } from '@/components/ui/button'
-import { MessageCircle, Users, Lock, Unlock } from 'lucide-react'
+import {
+  MessageCircle,
+  MessageSquare,
+  MessageSquareOff,
+  Users,
+  Lock,
+  Unlock,
+} from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -92,6 +100,42 @@ export default function WelcomeScreen({
         id: conversation.id,
         name: conversation.name,
       })
+    }
+  }
+
+  const handleUnlockConversation = async (conversation: Conversation) => {
+    if (!user) return
+
+    try {
+      const newLockState = !conversation.is_locked
+      await conversationsApiApiPatchConversation({
+        path: {
+          conversation_id: conversation.id || '',
+        },
+        body: { is_locked: newLockState },
+        headers: {
+          'User-Id': user.id,
+        },
+      })
+
+      if (newLockState) {
+        showToast.success(
+          'Conversation locked!',
+          'No one can read the content of the conversation.'
+        )
+      } else {
+        showToast.success(
+          'Conversation revealed!',
+          'Anyone can now see what has been sent.'
+        )
+      }
+      fetchConversations()
+    } catch (error) {
+      console.error('Failed to update conversation lock state:', error)
+      showToast.error(
+        'Failed to update conversation',
+        'Please try again or refresh the page.'
+      )
     }
   }
 
@@ -206,9 +250,9 @@ export default function WelcomeScreen({
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2">
                               {conversation.is_locked ? (
-                                <Lock className="h-4 w-4 text-muted-foreground" />
+                                <MessageSquareOff className="h-4 w-4 text-muted-foreground" />
                               ) : (
-                                <Unlock className="h-4 w-4 text-muted-foreground" />
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
                               )}
                               <h3 className="font-semibold truncate">
                                 {conversation.name || 'Unnamed Chat'}
@@ -217,9 +261,36 @@ export default function WelcomeScreen({
                             {renderUserAvatars(conversation.users_ids)}
                           </div>
                         </div>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          #{conversation.id}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {/* Lock/Unlock button - only show for conversation creator */}
+                          {conversation.users_ids &&
+                            conversation.users_ids.length > 0 &&
+                            conversation.users_ids[0] === user.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleUnlockConversation(conversation)
+                                }}
+                                className="h-6 w-6 p-0"
+                                title={
+                                  conversation.is_locked
+                                    ? 'Unlock conversation'
+                                    : 'Lock conversation'
+                                }
+                              >
+                                {conversation.is_locked ? (
+                                  <Unlock className="h-3 w-3" />
+                                ) : (
+                                  <Lock className="h-3 w-3" />
+                                )}
+                              </Button>
+                            )}
+                          <span className="font-mono text-xs text-muted-foreground">
+                            #{conversation.id}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     {index < conversations.length - 1 && (
