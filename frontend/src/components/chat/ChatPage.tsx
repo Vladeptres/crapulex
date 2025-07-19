@@ -422,10 +422,12 @@ export default function ChatPage({
                             : 'bg-muted'
                         } ${conversation.is_locked ? 'blur-xs' : ''}`}
                       >
-                        <div className="flex items-baseline gap-8">
-                          <p className="text-sm">{message.content}</p>
+                        <div className="flex items-baseline gap-8 min-w-0">
+                          <p className="text-sm break-words whitespace-pre-wrap">
+                            {message.content}
+                          </p>
                           {message.timestamp && (
-                            <span className="text-xs opacity-30">
+                            <span className="text-xs opacity-30 flex-shrink-0">
                               {formatTime(message.timestamp)}
                             </span>
                           )}
