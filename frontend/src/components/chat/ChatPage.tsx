@@ -1,14 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Send,
-  ArrowLeft,
-  Copy,
-  Check,
-  ChevronDown,
-  MessageSquareOff,
-} from 'lucide-react'
+import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import type { User, Message, Conversation } from '@/api/generated'
 import {
@@ -350,17 +343,6 @@ export default function ChatPage({
               </p>
             </div>
           </div>
-        ) : conversation.is_locked ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <MessageSquareOff className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg">This conversation is locked</p>
-              <p className="text-sm">
-                Only the conversation creator can unlock it to reveal the
-                content.
-              </p>
-            </div>
-          </div>
         ) : (
           groupMessages(messages).map((group, groupIndex) => (
             <div
@@ -372,7 +354,9 @@ export default function ChatPage({
               >
                 {/* Avatar - only show on the last message of the group */}
                 {
-                  <Avatar className="h-6 w-6 flex-shrink-0">
+                  <Avatar
+                    className={`h-6 w-6 flex-shrink-0 ${conversation.is_locked ? 'blur-xs' : ''}`}
+                  >
                     <AvatarImage
                       src={getGravatarUrl(
                         users[group.userId]?.username || group.userId,
@@ -400,7 +384,7 @@ export default function ChatPage({
                           group.userId === user.id
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted'
-                        }`}
+                        } ${conversation.is_locked ? 'blur-xs' : ''}`}
                       >
                         <div className="flex items-baseline gap-8">
                           <p className="text-sm">{message.content}</p>

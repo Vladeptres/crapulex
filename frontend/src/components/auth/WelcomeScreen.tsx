@@ -18,6 +18,7 @@ import {
 import { showToast } from '@/lib/toast'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import FunBackground from '@/components/ui/fun-background'
 import JoinChatModal from './JoinChatModal'
 import NewChatModal from './NewChatModal'
 
@@ -188,7 +189,7 @@ export default function WelcomeScreen({
         <AppHeader user={user} onLogout={onLogout} />
 
         {/* Conversation List Section */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto relative">
           <div className="w-full">
             <div className="flex items-center justify-between px-6 pt-6 mb-6">
               <h2 className="text-2xl font-bold">Your Conversations</h2>
@@ -210,27 +211,30 @@ export default function WelcomeScreen({
                 </p>
               </div>
             ) : conversations.length === 0 ? (
-              <div className="text-center py-12">
-                <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No conversations yet
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Create or join one before you're too wasted! 🤪
-                </p>
-                <div className="flex gap-4">
-                  <NewChatModal
-                    user={user}
-                    onGoToChat={onGoToChat}
-                    onConversationCreated={fetchConversations}
-                  />
-                  {onJoinChat && (
-                    <JoinChatModal
+              <div className="text-center py-12 relative overflow-hidden">
+                <FunBackground />
+                <div className="relative z-10">
+                  <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No conversations yet
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Create or join one before you're too wasted! 🤪
+                  </p>
+                  <div className="flex gap-4">
+                    <NewChatModal
                       user={user}
-                      onJoinChat={onJoinChat}
-                      onConversationJoined={fetchConversations}
+                      onGoToChat={onGoToChat}
+                      onConversationCreated={fetchConversations}
                     />
-                  )}
+                    {onJoinChat && (
+                      <JoinChatModal
+                        user={user}
+                        onJoinChat={onJoinChat}
+                        onConversationJoined={fetchConversations}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -238,14 +242,14 @@ export default function WelcomeScreen({
                 {conversations.map((conversation, index) => (
                   <div
                     key={conversation.id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors duration-200 backdrop-blur-lg"
                     onClick={() => handleGoToConversation(conversation)}
                   >
                     <div className="px-6 py-3">
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-4">
                               {conversation.is_locked ? (
                                 <MessageSquareOff className="h-4 w-4 text-muted-foreground" />
                               ) : (
@@ -298,6 +302,13 @@ export default function WelcomeScreen({
               </div>
             )}
           </div>
+
+          {/* Fun background below conversation list */}
+          {conversations.length > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 h-full pointer-events-none">
+              <FunBackground />
+            </div>
+          )}
         </div>
 
         {/* Action Buttons Section - Only show when there are conversations */}
