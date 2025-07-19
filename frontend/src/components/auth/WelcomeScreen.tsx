@@ -305,7 +305,7 @@ export default function WelcomeScreen({
 
         {/* Action Buttons Section - Only show when there are conversations */}
         {conversations.length > 0 && (
-          <div className="px-6 py-3 mb-2 border-t bg-card flex gap-3 justify-center">
+          <div className="px-6 py-3 pb-6 border-t bg-card flex gap-3 justify-center">
             <NewChatModal
               user={user}
               onGoToChat={onGoToChat}

@@ -145,7 +145,7 @@ export default function LoginForm({
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full gradient-btn"
+          className="w-full gradient-btn text-white"
         >
           {isLoading ? (
             <>

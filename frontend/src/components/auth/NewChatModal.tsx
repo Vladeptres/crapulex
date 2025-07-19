@@ -115,7 +115,7 @@ export default function NewChatModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="gradient-btn">New party chat</Button>
+        <Button className="gradient-btn text-white">New party chat</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         {!conversationId ? (
@@ -152,7 +152,7 @@ export default function NewChatModal({
                 <Button
                   type="submit"
                   disabled={!conversationName.trim() || isLoading}
-                  className="gradient-btn"
+                  className="gradient-btn text-white"
                 >
                   {isLoading ? 'Creating...' : 'Create Chat'}
                 </Button>

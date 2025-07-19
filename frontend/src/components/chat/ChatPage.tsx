@@ -418,7 +418,7 @@ export default function ChatPage({
                       <div
                         className={`rounded-lg px-4 py-2 ${
                           group.userId === user.id
-                            ? 'bg-primary text-primary-foreground'
+                            ? 'gradient-btn text-white'
                             : 'bg-muted'
                         } ${conversation.is_locked ? 'blur-xs' : ''}`}
                       >
@@ -478,7 +478,7 @@ export default function ChatPage({
             disabled={
               !messageInput.trim() || isSending || !conversation.is_locked
             }
-            className="w-9 h-9 p-0 rounded-lg self-end gradient-btn"
+            className="w-9 h-9 p-0 rounded-lg self-end gradient-btn text-white"
           >
             <Send className="h-4 w-4 mr-0.5 mt-0.5" />
           </Button>
