@@ -189,18 +189,10 @@ export default function WelcomeScreen({
         <AppHeader user={user} onLogout={onLogout} />
 
         {/* Conversation List Section */}
-        <div className="flex-1 overflow-auto relative">
-          <div className="w-full">
+        <div className="flex-1 overflow-hidden relative">
+          <div className="w-full flex flex-col h-full">
             <div className="flex items-center justify-between px-6 pt-6 mb-6">
               <h2 className="text-2xl font-bold">Your Conversations</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchConversations}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Loading...' : 'Refresh'}
-              </Button>
             </div>
 
             {isLoading ? (
@@ -211,17 +203,17 @@ export default function WelcomeScreen({
                 </p>
               </div>
             ) : conversations.length === 0 ? (
-              <div className="text-center py-12 relative overflow-hidden">
+              <div className="flex flex-col justify-center items-center h-full relative overflow-hidden">
                 <FunBackground />
-                <div className="relative z-10">
+                <div className="relative z-10 text-center">
                   <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
                   <h3 className="text-lg font-semibold mb-2">
                     No conversations yet
                   </h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground mb-6">
                     Create or join one before you're too wasted! 🤪
                   </p>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 justify-center">
                     <NewChatModal
                       user={user}
                       onGoToChat={onGoToChat}
