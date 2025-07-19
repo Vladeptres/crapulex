@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import type { User, Message, Conversation } from '@/api/generated'
@@ -172,6 +172,10 @@ export default function ChatPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    await sendMessage()
+  }
+
+  const sendMessage = async () => {
     if (messageInput.trim() && !isSending) {
       setIsSending(true)
       try {
@@ -216,6 +220,13 @@ export default function ChatPage({
       } finally {
         setIsSending(false)
       }
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
     }
   }
 
@@ -321,6 +332,23 @@ export default function ChatPage({
         </div>
       </div>
 
+      {/* Locked Conversation Header */}
+      {conversation.is_locked && (
+        <div className="bg-muted/50 border-b px-4 py-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-lg">🎉</span>
+            <div>
+              <p className="font-medium text-sm">Party time!</p>
+              <p className="text-xs text-muted-foreground">
+                Share your ideas while the party's still going on. But don't
+                take too long, people want to make memories during the party
+                too!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div
         className="flex-1 overflow-y-auto pl-2 pr-4 pt-4 pb-4 space-y-4 min-h-0 relative"
@@ -419,26 +447,28 @@ export default function ChatPage({
       {/* Message Input */}
       <div className="border-t bg-card p-4">
         <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
+          <Textarea
             value={messageInput}
             onChange={e => {
               setMessageInput(e.target.value)
               setIsUserTyping(e.target.value.length > 0)
             }}
+            onKeyDown={handleKeyDown}
             placeholder={
               !conversation.is_locked
                 ? 'Conversation is now closed. You can only read the content.'
                 : 'Type your message...'
             }
-            className="flex-1 rounded-lg"
+            className="flex-1 resize-none min-h-[40px] max-h-32"
             disabled={isSending || !conversation.is_locked}
+            rows={1}
           />
           <Button
             type="submit"
             disabled={
               !messageInput.trim() || isSending || !conversation.is_locked
             }
-            className="w-9 h-9 p-0 rounded-lg"
+            className="w-9 h-9 p-0 rounded-lg self-end"
           >
             <Send className="h-4 w-4 mr-0.5 mt-0.5" />
           </Button>
