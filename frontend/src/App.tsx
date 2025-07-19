@@ -39,26 +39,20 @@ function App() {
     setCurrentConversation(null)
   }
 
-  const handleJoinChat = ({ id, name }: Conversation) => {
+  const handleJoinChat = (conversation: Conversation) => {
     // For joining, we don't have the name yet, so we'll use a placeholder
     // In a real app, you'd fetch the conversation details from the API
-    setCurrentConversation({
-      id: id,
-      name: name, // Placeholder name
-    })
+    setCurrentConversation(conversation)
   }
 
-  const handleGoToChat = ({ id, name }: Conversation) => {
-    if (currentConversation && currentConversation.id === id) {
+  const handleGoToChat = (conversation: Conversation) => {
+    if (currentConversation && currentConversation.id === conversation.id) {
       // Already in the right conversation, just ensure it's set
       setCurrentConversation(currentConversation)
     } else {
       // This would typically fetch the conversation details from the API
       // For now, we'll use a placeholder name
-      setCurrentConversation({
-        id: id,
-        name,
-      })
+      setCurrentConversation(conversation)
     }
   }
 

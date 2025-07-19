@@ -25,8 +25,8 @@ interface WelcomeScreenProps {
   user: User | null
   onLogin: () => void
   onLogout: () => void
-  onJoinChat?: ({ id, name }: Conversation) => void
-  onGoToChat?: ({ id, name }: Conversation) => void
+  onJoinChat?: (conversation: Conversation) => void
+  onGoToChat?: (conversation: Conversation) => void
 }
 
 export default function WelcomeScreen({
@@ -96,10 +96,7 @@ export default function WelcomeScreen({
 
   const handleGoToConversation = (conversation: Conversation) => {
     if (conversation.id && onGoToChat) {
-      onGoToChat({
-        id: conversation.id,
-        name: conversation.name,
-      })
+      onGoToChat(conversation)
     }
   }
 

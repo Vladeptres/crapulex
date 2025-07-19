@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
+import {
+  Send,
+  ArrowLeft,
+  Copy,
+  Check,
+  ChevronDown,
+  MessageSquareOff,
+} from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import type { User, Message, Conversation } from '@/api/generated'
 import {
@@ -197,6 +204,14 @@ export default function ChatPage({
           setMessageInput('')
           setIsUserTyping(false)
 
+          // Show success toast for locked conversations
+          if (conversation.is_locked) {
+            showToast.success(
+              'Message sent!',
+              'Thanks for this message of great value.'
+            )
+          }
+
           // Call the optional callback
           if (onSendMessage) {
             onSendMessage(messageInput.trim())
@@ -335,6 +350,17 @@ export default function ChatPage({
               </p>
             </div>
           </div>
+        ) : conversation.is_locked ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <div className="text-center">
+              <MessageSquareOff className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <p className="text-lg">This conversation is locked</p>
+              <p className="text-sm">
+                Only the conversation creator can unlock it to reveal the
+                content.
+              </p>
+            </div>
+          </div>
         ) : (
           groupMessages(messages).map((group, groupIndex) => (
             <div
@@ -415,13 +441,19 @@ export default function ChatPage({
               setMessageInput(e.target.value)
               setIsUserTyping(e.target.value.length > 0)
             }}
-            placeholder="Type your message..."
+            placeholder={
+              !conversation.is_locked
+                ? 'Conversation is now closed. You can only read the content.'
+                : 'Type your message...'
+            }
             className="flex-1 rounded-lg"
-            disabled={isSending}
+            disabled={isSending || !conversation.is_locked}
           />
           <Button
             type="submit"
-            disabled={!messageInput.trim() || isSending}
+            disabled={
+              !messageInput.trim() || isSending || !conversation.is_locked
+            }
             className="w-9 h-9 p-0 rounded-lg"
           >
             <Send className="h-4 w-4 mr-0.5 mt-0.5" />
