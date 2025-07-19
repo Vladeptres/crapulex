@@ -215,7 +215,7 @@ export default function SignupForm({
         <Button
           type="submit"
           disabled={isLoading || isSuccess}
-          className="w-full"
+          className="w-full gradient-btn"
         >
           {isLoading ? (
             <>

@@ -142,7 +142,11 @@ export default function LoginForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button type="submit" disabled={isLoading} className="w-full">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full gradient-btn"
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

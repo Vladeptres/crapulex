@@ -33,7 +33,7 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
   return (
     <header className="flex items-center justify-between px-4 py-2 border-b">
       <div>
-        <span className="text-2xl font-bold text-primary">
+        <span className="text-2xl font-bold gradient-text">
           {'Bourracho'.toLocaleLowerCase()}
         </span>
       </div>

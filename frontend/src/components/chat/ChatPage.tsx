@@ -476,7 +476,7 @@ export default function ChatPage({
             disabled={
               !messageInput.trim() || isSending || !conversation.is_locked
             }
-            className="w-9 h-9 p-0 rounded-lg self-end"
+            className="w-9 h-9 p-0 rounded-lg self-end gradient-btn"
           >
             <Send className="h-4 w-4 mr-0.5 mt-0.5" />
           </Button>

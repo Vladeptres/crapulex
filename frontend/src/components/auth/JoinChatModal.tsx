@@ -164,6 +164,7 @@ export default function JoinChatModal({
             <Button
               type="submit"
               disabled={!conversationId.trim() || isLoading}
+              className="gradient-btn"
             >
               {isLoading ? 'Joining...' : 'Join Chat'}
             </Button>

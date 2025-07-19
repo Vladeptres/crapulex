@@ -146,4 +146,22 @@ h1 {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Single animated gradient button class using Tailwind */
+  .gradient-btn {
+    @apply bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500;
+    @apply bg-[length:120%_auto] text-white
+           transition-all duration-500 ease-in-out
+           shadow-md rounded-md px-8 py-4
+           hover:bg-[position:right_center] hover:text-white
+           border-none cursor-pointer font-medium text-sm
+           inline-flex items-center justify-center gap-2
+           whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Single animated gradient text class using Tailwind */
+  .gradient-text {
+    @apply bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500;
+    @apply bg-clip-text text-transparent;
+  }
 }
