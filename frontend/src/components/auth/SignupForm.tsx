@@ -9,7 +9,7 @@ import { conversationsApiApiRegisterUser } from '@/api/generated/sdk.gen'
 import type { UserPayload } from '@/api/generated'
 
 interface SignupFormData {
-  username: string
+  email: string
   password: string
   confirmPassword: string
 }
@@ -24,7 +24,7 @@ export default function SignupForm({
   onSwitchToLogin,
 }: SignupFormProps) {
   const [formData, setFormData] = useState<SignupFormData>({
-    username: '',
+    email: '',
     password: '',
     confirmPassword: '',
   })
@@ -45,12 +45,14 @@ export default function SignupForm({
   }
 
   const validateForm = (): boolean => {
-    if (!formData.username.trim()) {
-      setError('Username is required')
+    if (!formData.email.trim()) {
+      setError('Email is required')
       return false
     }
-    if (formData.username.length < 3) {
-      setError('Username must be at least 3 characters')
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address')
       return false
     }
     if (!formData.password.trim()) {
@@ -78,7 +80,7 @@ export default function SignupForm({
 
     try {
       const payload: UserPayload = {
-        username: formData.username,
+        username: formData.email, // Pass email as username to backend
         password: formData.password,
       }
 
@@ -128,13 +130,13 @@ export default function SignupForm({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="username"
-          name="username"
-          type="text"
-          placeholder="Choose a username"
-          value={formData.username}
+          id="email"
+          name="email"
+          type="email"
+          placeholder="Enter your email"
+          value={formData.email}
           onChange={handleInputChange}
           disabled={isLoading || isSuccess}
           required
