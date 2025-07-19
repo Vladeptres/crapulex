@@ -11,6 +11,7 @@ import {
 } from '@/api/generated'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import FunBackground from '@/components/ui/fun-background'
 
 interface ChatPageProps {
   conversation: Conversation
@@ -299,9 +300,16 @@ export default function ChatPage({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {/* Fun Background - only show when conversation is not locked */}
+      {!conversation.is_locked && (
+        <div className="absolute inset-0 pointer-events-none">
+          <FunBackground />
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex items-center justify-between p-2 border-b bg-card">
+      <div className="flex items-center justify-between p-2 border-b bg-card relative z-10">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBackToHome}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -334,7 +342,7 @@ export default function ChatPage({
 
       {/* Locked Conversation Header */}
       {conversation.is_locked && (
-        <div className="bg-muted/50 border-b px-4 py-3">
+        <div className="bg-muted/50 border-b px-4 py-3 relative z-10">
           <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-lg">🎉</span>
             <div>
@@ -351,7 +359,7 @@ export default function ChatPage({
 
       {/* Messages Area */}
       <div
-        className="flex-1 overflow-y-auto pl-2 pr-4 pt-4 pb-4 space-y-4 min-h-0 relative"
+        className="flex-1 overflow-y-auto pl-2 pr-4 pt-4 pb-4 space-y-4 min-h-0 relative z-10"
         onScroll={handleScroll}
         ref={messagesContainerRef}
       >
@@ -445,7 +453,7 @@ export default function ChatPage({
       </div>
 
       {/* Message Input */}
-      <div className="border-t bg-card p-4">
+      <div className="border-t bg-card p-4 relative z-10">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Textarea
             value={messageInput}
