@@ -41,6 +41,7 @@ class Conversation(BaseModel):
     users_ids: list[str] = []
     name: str = "Name me 😘"
     is_locked: bool = True
+    is_visible: bool = False
 
 
 class MongoConversationStoreModel(BaseModel):
