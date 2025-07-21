@@ -1,10 +1,8 @@
-from typing import List
-
 from loguru import logger
 from pymongo import MongoClient
 
-from bourracho import config
-from bourracho.models import Conversation
+from core import config
+from core.models import Conversation
 
 
 class ConversationsStore:
@@ -22,7 +20,7 @@ class ConversationsStore:
     def get_conversation(self, conversation_id: str) -> Conversation:
         return Conversation.model_validate(self.conversations_collection.find_one({"id": conversation_id}))
 
-    def get_conversations(self, user_id: str) -> List[Conversation]:
+    def get_conversations(self, user_id: str) -> list[Conversation]:
         return [
             Conversation.model_validate(c)
             for c in self.conversations_collection.find({"users_ids": {"$in": [user_id]}})
@@ -37,6 +35,7 @@ class ConversationsStore:
 
     def update_conversation(self, conversation: Conversation) -> None:
         self.conversations_collection.update_one(
-            {"id": conversation.id}, {"$set": conversation.model_dump(exclude_unset=True)}
+            {"id": conversation.id},
+            {"$set": conversation.model_dump(exclude_unset=True)},
         )
         logger.info(f"Succesfully updated conversation {conversation.id}")

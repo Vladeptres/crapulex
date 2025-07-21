@@ -1,10 +1,8 @@
-from typing import List
-
 from loguru import logger
 from pymongo import MongoClient
 
-from bourracho import config
-from bourracho.models import Message, React
+from core import config
+from core.models import Message, React
 
 
 class MessagesStore:
@@ -22,7 +20,7 @@ class MessagesStore:
     def update_message(self, message: Message) -> None:
         self.messages_collection.update_one({"id": message.id}, {"$set": message.model_dump(exclude_unset=True)})
 
-    def get_messages(self, conversation_id: str) -> List[Message]:
+    def get_messages(self, conversation_id: str) -> list[Message]:
         return [Message.model_validate(m) for m in self.messages_collection.find({"conversation_id": conversation_id})]
 
     def get_message(self, message_id: str) -> Message:
@@ -40,7 +38,7 @@ class MessagesStore:
         )
         logger.info(f"Added react {react} to message {message_id}.")
 
-    def get_reacts(self, message_id: str) -> List[React]:
+    def get_reacts(self, message_id: str) -> list[React]:
         message = self.messages_collection.find_one({"id": message_id})
         if not message:
             raise ValueError(f"Message {message_id} does not exist")

@@ -1,7 +1,7 @@
 from loguru import logger
 from pymongo import MongoClient
 
-from bourracho import config
+from core import config
 
 
 def check_db_connection():

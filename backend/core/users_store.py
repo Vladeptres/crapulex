@@ -4,8 +4,8 @@ import bcrypt
 from loguru import logger
 from pymongo import MongoClient
 
-from bourracho import config
-from bourracho.models import User
+from core import config
+from core.models import User
 
 
 class UsersStore:
@@ -19,8 +19,7 @@ class UsersStore:
     @logger.catch
     def get_new_user(self, username: str, password: str) -> User:
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-        user = User(id=str(uuid.uuid4()), username=username, password_hash=password_hash)
-        return user
+        return User(id=str(uuid.uuid4()), username=username, password_hash=password_hash)
 
     @logger.catch
     def check_credentials(self, username: str, password: str) -> str | None:
@@ -29,7 +28,7 @@ class UsersStore:
             logger.info(f"No user found with username {username}")
             return None
         user = User.model_validate(db_user)
-        logger.info("User found with username {}".format(username))
+        logger.info(f"User found with username {username}")
         if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
             logger.info(f"Password check failed for user {username}")
             return None
@@ -39,7 +38,7 @@ class UsersStore:
     def add_user(self, user: User) -> None:
         matching_usernames = self.users_collection.find_one({"username": user.username})
         if matching_usernames and user.username in matching_usernames:
-            raise ValueError("User with username {} already exists".format(user.username))
+            raise ValueError(f"User with username {user.username} already exists")
         logger.info(f"Adding user with username {user.username} to collection.")
         self.users_collection.insert_one(user.model_dump())
         logger.info(f"User with username {user.username} added to collection.")

@@ -25,13 +25,17 @@ dependencies = [
 # Apply ruff to all packages in the workspace
 extend-exclude = [".venv", "build", "dist"]
 line-length = 120
-lint.select = ["E", "F", "I", "B"]
-lint.ignore = []
+lint.select = ["ALL"]
+lint.ignore = ["EM", "TRY", "D", "ANN"]
+include = ["core/*", "api/api.py"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"api/api.py" = ["BLE001", "ARG001"]
 
 [tool.setuptools]
 include-package-data = true
-packages.find.include = ['bourracho*', "bourracho/*.json"]
-packages.find.exclude = ['bourracho.tests*']
+packages.find.include = ['core*', "core/*.json"]
+packages.find.exclude = ['tests*']
 
 [build-system]
 requires = ["setuptools >= 61.0"]
@@ -41,4 +45,5 @@ build-backend = "setuptools.build_meta"
 dev = [
     "pytest>=8.4.1",
     "ruff>=0.12.3",
+    "snakeviz>=2.2.2",
 ]
