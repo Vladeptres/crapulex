@@ -5,8 +5,8 @@ import string
 import pytest
 from pymongo import MongoClient
 
-from bourracho.models import Conversation, Message, React
-from bourracho.stores_registry import StoresRegistry
+from core.models import Conversation, Message, React
+from core.stores_registry import StoresRegistry
 
 MONGO_URL = os.environ.get("MONGO_DB_URL", "mongodb://localhost:27017/")
 
