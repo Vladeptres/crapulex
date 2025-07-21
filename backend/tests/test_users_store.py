@@ -2,15 +2,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bourracho.models import User
-from bourracho.users_store import UsersStore
+from core.models import User
+from core.users_store import UsersStore
 
 MONGO_TEST_DB = "bourracho_test"
 
 
 @pytest.fixture
 def store():
-    with patch("bourracho.users_store.MongoClient"):
+    with patch("core.users_store.MongoClient"):
         instance = UsersStore(MONGO_TEST_DB)
         yield instance
 
@@ -29,7 +29,7 @@ def test_get_user_found(store):
     fake_user = {"id": "uid"}
     with (
         patch.object(store, "users_collection") as mock_coll,
-        patch("bourracho.users_store.User.model_validate", side_effect=lambda x: x),
+        patch("core.users_store.User.model_validate", side_effect=lambda x: x),
     ):
         mock_coll.find_one.return_value = fake_user
         result = store.get_user("uid")

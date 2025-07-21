@@ -44,5 +44,10 @@ jobs:
     - name: Run API Tests
       run: |
         cd backend
-        uv run manage.py test
+        uv run manage.py test --exclude-tag=slow
+    - name: Run Slow API Tests (main branch only)
+      if: github.ref == 'refs/heads/main'
+      run: |
+        cd backend
+        uv run manage.py test --tag=slow
 

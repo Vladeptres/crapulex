@@ -2,15 +2,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bourracho.conversations_store import ConversationsStore
-from bourracho.models import Conversation
+from core.conversations_store import ConversationsStore
+from core.models import Conversation
 
 MONGO_TEST_DB = "bourracho_test"
 
 
 @pytest.fixture
 def store():
-    with patch("bourracho.conversations_store.MongoClient"):
+    with patch("core.conversations_store.MongoClient"):
         instance = ConversationsStore(db_name=MONGO_TEST_DB)
         yield instance
 
@@ -20,7 +20,7 @@ def test_create_conversation_validates_and_inserts(store):
     conversation.model_dump.return_value = {"foo": "bar"}
     with (
         patch.object(store, "conversations_collection") as mock_coll,
-        patch("bourracho.conversations_store.Conversation.model_validate") as mock_validate,
+        patch("core.conversations_store.Conversation.model_validate") as mock_validate,
     ):
         store.add_conversation(conversation)
         mock_validate.assert_called_once_with(conversation)
@@ -31,7 +31,7 @@ def test_get_conversation_returns_validated(store):
     fake_conv = {"id": "cid"}
     with (
         patch.object(store, "conversations_collection") as mock_coll,
-        patch("bourracho.conversations_store.Conversation.model_validate", side_effect=lambda x: x),
+        patch("core.conversations_store.Conversation.model_validate", side_effect=lambda x: x),
     ):
         mock_coll.find_one.return_value = fake_conv
         result = store.get_conversation("cid")
@@ -43,7 +43,7 @@ def test_get_conversations_returns_list(store):
     fake_convs = [{"id": "cid", "users_ids": ["uid"]}]
     with (
         patch.object(store, "conversations_collection") as mock_coll,
-        patch("bourracho.conversations_store.Conversation.model_validate", side_effect=lambda x: x),
+        patch("core.conversations_store.Conversation.model_validate", side_effect=lambda x: x),
     ):
         mock_coll.find.return_value = fake_convs
         result = store.get_conversations("uid")
