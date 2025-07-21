@@ -1,15 +1,16 @@
 import uuid
 from datetime import datetime
 
+import pytz
 from loguru import logger
 from ninja import NinjaAPI, Schema
 from pydantic import ValidationError
 
-from bourracho.models import Conversation, Message, UserPayload
-from bourracho.stores_registry import StoresRegistry
-from conversations_api import config
+from api.config import MONGO_DB_NAME
+from core.models import Conversation, Message, UserPayload
+from core.stores_registry import StoresRegistry
 
-registry = StoresRegistry(db_name=config.MONGO_DB_NAME)
+registry = StoresRegistry(db_name=MONGO_DB_NAME)
 
 api = NinjaAPI()
 
@@ -34,7 +35,7 @@ def register_user(request, user_credentials: UserPayload):
         return 200, UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
     except KeyError:
         logger.error(f"User with username {user_credentials.username} already exists")
-        return 401, {"error": "User with username {} already exists".format(user_credentials.username)}
+        return 401, {"error": f"User with username {user_credentials.username} already exists"}
     except Exception as e:
         logger.error(f"Unexpected error during user registration: {e}")
         return 500, {"error": str(e)}
@@ -97,7 +98,7 @@ def post_message(request, conversation_id: str, message: Message):
         logger.info(f"Received request to post message {message} to conversation {conversation_id}.")
         message.issuer_id = user_id
         message.id = message.id or str(uuid.uuid4())
-        message.timestamp = message.timestamp or datetime.now()
+        message.timestamp = message.timestamp or pytz.timezone("Europe/Paris").localize(datetime.now())  # noqa: DTZ005
         message = Message.model_validate(message)
         message.conversation_id = conversation_id
         registry.add_message(message=message)
