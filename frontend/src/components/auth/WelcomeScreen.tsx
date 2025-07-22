@@ -14,6 +14,8 @@ import {
   Users,
   Lock,
   Unlock,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
@@ -119,17 +121,53 @@ export default function WelcomeScreen({
       if (newLockState) {
         showToast.success(
           'Conversation locked!',
-          'No one can read the content of the conversation.'
+          'No one can send new messages to this conversation.'
         )
       } else {
         showToast.success(
-          'Conversation revealed!',
-          'Anyone can now see what has been sent.'
+          'Conversation unlocked!',
+          'Users can now send messages to this conversation.'
         )
       }
       fetchConversations()
     } catch (error) {
       console.error('Failed to update conversation lock state:', error)
+      showToast.error(
+        'Failed to update conversation',
+        'Please try again or refresh the page.'
+      )
+    }
+  }
+
+  const handleToggleVisibility = async (conversation: Conversation) => {
+    if (!user) return
+
+    try {
+      const newVisibilityState = !conversation.is_visible
+      await apiApiPatchConversation({
+        path: {
+          conversation_id: conversation.id || '',
+        },
+        body: { is_visible: newVisibilityState },
+        headers: {
+          'User-Id': user.id,
+        },
+      })
+
+      if (newVisibilityState) {
+        showToast.success(
+          'Conversation revealed!',
+          'Messages are now visible to all users.'
+        )
+      } else {
+        showToast.success(
+          'Conversation hidden!',
+          'Messages are now blurred for privacy.'
+        )
+      }
+      fetchConversations()
+    } catch (error) {
+      console.error('Failed to update conversation visibility:', error)
       showToast.error(
         'Failed to update conversation',
         'Please try again or refresh the page.'
@@ -242,7 +280,7 @@ export default function WelcomeScreen({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-4">
-                              {conversation.is_locked ? (
+                              {!conversation.is_visible ? (
                                 <MessageSquareOff className="h-4 w-4 text-muted-foreground" />
                               ) : (
                                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
@@ -255,6 +293,31 @@ export default function WelcomeScreen({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {/* Visibility toggle button - only show for conversation creator */}
+                          {conversation.users_ids &&
+                            conversation.users_ids.length > 0 &&
+                            conversation.users_ids[0] === user.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleToggleVisibility(conversation)
+                                }}
+                                className="h-6 w-6 p-0"
+                                title={
+                                  conversation.is_visible
+                                    ? 'Hide conversation'
+                                    : 'Reveal conversation'
+                                }
+                              >
+                                {conversation.is_visible ? (
+                                  <EyeOff className="h-3 w-3" />
+                                ) : (
+                                  <Eye className="h-3 w-3" />
+                                )}
+                              </Button>
+                            )}
                           {/* Lock/Unlock button - only show for conversation creator */}
                           {conversation.users_ids &&
                             conversation.users_ids.length > 0 &&

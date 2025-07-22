@@ -301,8 +301,8 @@ export default function ChatPage({
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Fun Background - only show when conversation is not locked */}
-      {!conversation.is_locked && (
+      {/* Fun Background - only show when conversation is visible */}
+      {conversation.is_visible && (
         <div className="absolute inset-0 pointer-events-none">
           <FunBackground />
         </div>
@@ -341,7 +341,7 @@ export default function ChatPage({
       </div>
 
       {/* Locked Conversation Header */}
-      {conversation.is_locked && (
+      {!conversation.is_locked && !conversation.is_visible && (
         <div className="bg-muted/50 border-b px-4 py-3 relative z-10">
           <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-lg">🎉</span>
@@ -391,7 +391,7 @@ export default function ChatPage({
                 {/* Avatar - only show on the last message of the group */}
                 {
                   <Avatar
-                    className={`h-6 w-6 flex-shrink-0 ${conversation.is_locked ? 'blur-xs' : ''}`}
+                    className={`h-6 w-6 flex-shrink-0 ${!conversation.is_visible ? 'blur-xs' : ''}`}
                   >
                     <AvatarImage
                       src={getGravatarUrl(
@@ -420,7 +420,7 @@ export default function ChatPage({
                           group.userId === user.id
                             ? 'gradient-btn text-white'
                             : 'bg-muted'
-                        } ${conversation.is_locked ? 'blur-xs' : ''}`}
+                        } ${!conversation.is_visible ? 'blur-xs' : ''}`}
                       >
                         <div className="flex items-baseline gap-8 min-w-0">
                           <p className="text-sm break-words whitespace-pre-wrap">
@@ -465,18 +465,18 @@ export default function ChatPage({
             }}
             onKeyDown={handleKeyDown}
             placeholder={
-              !conversation.is_locked
-                ? 'Conversation is now closed. You can only read the content.'
+              conversation.is_locked
+                ? 'Conversation is locked. You can only read the content.'
                 : 'Type your message...'
             }
             className="flex-1 resize-none min-h-[40px] max-h-32"
-            disabled={isSending || !conversation.is_locked}
+            disabled={isSending || conversation.is_locked}
             rows={1}
           />
           <Button
             type="submit"
             disabled={
-              !messageInput.trim() || isSending || !conversation.is_locked
+              !messageInput.trim() || isSending || conversation.is_locked
             }
             className="w-9 h-9 p-0 rounded-lg self-end gradient-btn text-white"
           >
