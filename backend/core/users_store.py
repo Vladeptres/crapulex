@@ -19,7 +19,7 @@ class UsersStore:
     @logger.catch
     def get_new_user(self, username: str, password: str) -> User:
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-        return User(id=str(uuid.uuid4()), username=username, password_hash=password_hash)
+        return User(id=str(uuid.uuid4())[:6], username=username, password_hash=password_hash)
 
     @logger.catch
     def check_credentials(self, username: str, password: str) -> str | None:
