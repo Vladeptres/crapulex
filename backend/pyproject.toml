@@ -9,13 +9,15 @@ requires-python = ">=3.11"
 
 dependencies = [
     "bcrypt>=4.3.0",
+    "boto3>=1.39.10",
+    "botocore>=1.39.10",
     "django>=3.2",
     "django-cors-headers>=4.7.0",
     "django-ninja>=1.4.3",
     "django-rest-swagger>=2.2.0",
-    "emoji>=2.14.1",
     "loguru>=0.7.3",
     "mongomock>=4.3.0",
+    "moto[all]>=5.1.8",
     "pydantic>=2.11.7",
     "pymongo>=4.13.2",
     "uvicorn>=0.35.0",
@@ -26,11 +28,14 @@ dependencies = [
 extend-exclude = [".venv", "build", "dist"]
 line-length = 120
 lint.select = ["ALL"]
-lint.ignore = ["EM", "TRY", "D", "ANN"]
-include = ["core/*", "api/api.py"]
+lint.ignore = ["EM", "TRY", "D", "ANN", "PTH"]
+include = ["core/*", "api/api.py", "api/tests.py", "tests/*"]
+exclude = ["tests/test_data/*"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "api/api.py" = ["BLE001", "ARG001"]
+"api/tests.py" = ["BLE001", "ARG001", "PT009"]
+"tests/*" = ["BLE001", "ARG001", "PT009", "S", "PLR2004", "SLF001"]
 
 [tool.setuptools]
 include-package-data = true

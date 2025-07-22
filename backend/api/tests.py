@@ -1,21 +1,44 @@
 import json
+import os
 import random
 import string
 import time
+from pathlib import Path
 
-import django
+import boto3
+import requests
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, tag
+from moto import mock_aws
+
+from core.config import S3_BUCKET_NAME
+
+
+def set_up_mock_s3():
+    s3_client = boto3.client(
+        "s3",
+        region_name="eu-north-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",  # noqa: S106
+    )
+    # Create the mock bucket
+    s3_client.create_bucket(
+        Bucket=S3_BUCKET_NAME,
+        CreateBucketConfiguration={"LocationConstraint": "eu-north-1"},
+    )
 
 
 class ConversationsApiTests(TestCase):
     def setUp(self):
-        self.client: django.test.Client = Client()
+        self.client = Client()
         self.api_prefix = "/api/"
 
     def test_register_and_login(self):
         payload = {"username": "alice", "password": "secret123"}
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user = resp.json()
@@ -36,7 +59,9 @@ class ConversationsApiTests(TestCase):
         # Register user
         payload = {"username": "bob", "password": "secret456"}
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user = resp.json()
@@ -60,12 +85,16 @@ class ConversationsApiTests(TestCase):
         payload1 = {"username": "user1", "password": "pw1"}
         payload2 = {"username": "user2", "password": "pw2"}
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload1), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload1),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user_id1 = resp.json()["id"]
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload2), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload2),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user_id2 = resp.json()["id"]
@@ -114,7 +143,9 @@ class ConversationsApiTests(TestCase):
         # Register user
         payload = {"username": "msguser", "password": "pwmsg"}
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user_id = resp.json()["id"]
@@ -132,24 +163,148 @@ class ConversationsApiTests(TestCase):
         msg = {"content": "Hello world!", "issuer_id": user_id, "conversation_id": conversation_id}
         resp = self.client.post(
             f"{self.api_prefix}chat/{conversation_id}/messages/",
-            json.dumps(msg),
-            content_type="application/json",
+            data={"message": json.dumps(msg)},
             HTTP_USER_ID=user_id,
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["content"], "Hello world!")
+
+    @mock_aws
+    def test_post_message_with_media(self):
+        set_up_mock_s3()
+        """Test posting a message with video, photo and mp3 attachment using real test data."""
+        # Register user
+        payload = {"username": "videouser", "password": "pwvid"}
+        resp = self.client.post(
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        user_id = resp.json()["id"]
+
+        # Create conversation
+        conversation = {"name": "MediaTest", "is_locked": False}
+        resp = self.client.post(
+            f"{self.api_prefix}chat/",
+            data=json.dumps(conversation),
+            content_type="application/json",
+            HTTP_USER_ID=user_id,
+        )
+        self.assertEqual(resp.status_code, 200)
+        conversation_id = resp.json()["id"]
+
+        # Load file from test data
+        test_data_dir = Path(__file__).parent.parent / "tests" / "test_data"
+        for i, media_file in enumerate(os.listdir(test_data_dir)):
+            media_path = test_data_dir / media_file
+
+            with media_path.open("rb") as f:
+                media_content = f.read()
+
+            uploaded_file = SimpleUploadedFile(name=media_file, content=media_content, content_type="video/mp4")
+
+            msg_data = {"content": f"Message {i}", "issuer_id": user_id, "conversation_id": conversation_id}
+
+            resp = self.client.post(
+                f"{self.api_prefix}chat/{conversation_id}/messages/",
+                data={
+                    "message": json.dumps(msg_data),
+                    "medias": [uploaded_file],
+                },
+                HTTP_USER_ID=user_id,
+            )
+
+            self.assertEqual(resp.status_code, 200)
+            response_data = resp.json()
+            self.assertEqual(response_data["content"], f"Message {i}")
+            self.assertEqual(len(response_data["medias_metadatas"]), 1)
+
+            media_metadata = response_data["medias_metadatas"][0]
+            self.assertEqual(media_metadata["type"], "video")
+            self.assertEqual(media_metadata["size"], len(media_content))
+            self.assertEqual(media_metadata["issuer_id"], user_id)
+            self.assertIn("presigned_url", media_metadata)
+            self.assertIn("id", media_metadata)
+            self.assertIn("timestamp", media_metadata)
+
+        # Get messages
+        resp = self.client.get(
+            f"{self.api_prefix}chat/{conversation_id}/messages/",
+            HTTP_USER_ID=user_id,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()), 3)
+        for message in resp.json():
+            self.assertIn("id", message)
+            self.assertIn("timestamp", message)
+            self.assertIn("medias_metadatas", message)
+            for media_metadata in message["medias_metadatas"]:
+                self.assertIn("presigned_url", media_metadata)
+                response = requests.get(media_metadata["presigned_url"])  # noqa: S113
+                self.assertEqual(response.status_code, 200)
+
+    def test_media_upload_error_handling(self):
+        """Test error handling for media uploads."""
+        # Register user
+        payload = {"username": "erroruser", "password": "pwerror"}
+        resp = self.client.post(
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        user_id = resp.json()["id"]
+
+        # Create conversation
+        conversation = {"name": "ErrorTest", "is_locked": False}
+        resp = self.client.post(
+            f"{self.api_prefix}chat/",
+            data=json.dumps(conversation),
+            content_type="application/json",
+            HTTP_USER_ID=user_id,
+        )
+        self.assertEqual(resp.status_code, 200)
+        conversation_id = resp.json()["id"]
+
+        # Test with unsupported file type
+        unsupported_file = SimpleUploadedFile(
+            name="test.txt",
+            content=b"This is a text file",
+            content_type="text/plain",
+        )
+
+        msg_data = {
+            "content": "Message with unsupported file",
+            "issuer_id": user_id,
+            "conversation_id": conversation_id,
+        }
+
+        resp = self.client.post(
+            f"{self.api_prefix}chat/{conversation_id}/messages/",
+            data={"message": json.dumps(msg_data), "medias": [unsupported_file]},
+            HTTP_USER_ID=user_id,
+        )
+
+        # Should return error for unsupported file type
+        self.assertEqual(resp.status_code, 422)
+        self.assertIn("error", resp.json())
 
     def test_full_conversation_flow(self):
         # Register two users
         payload1 = {"username": "flowuser1", "password": "pwflow1"}
         payload2 = {"username": "flowuser2", "password": "pwflow2"}
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload1), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload1),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user_id1 = resp.json()["id"]
         resp = self.client.post(
-            f"{self.api_prefix}register/", data=json.dumps(payload2), content_type="application/json",
+            f"{self.api_prefix}register/",
+            data=json.dumps(payload2),
+            content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)
         user_id2 = resp.json()["id"]
@@ -182,8 +337,7 @@ class ConversationsApiTests(TestCase):
         msg = {"content": "Hello world!", "conversation_id": conversation_id, "issuer_id": user_id2}
         resp = self.client.post(
             f"{self.api_prefix}chat/{conversation_id}/messages/",
-            data=json.dumps(msg),
-            content_type="application/json",
+            data={"message": json.dumps(msg)},
             HTTP_USER_ID=user_id2,
         )
         self.assertEqual(resp.status_code, 200)
@@ -238,7 +392,9 @@ class ConversationsApiTests(TestCase):
         for username in ["Alice", "Bob", "Tristan", "Julien", "Paul"]:
             payload = {"username": username, "password": "coucou"}
             resp = self.client.post(
-                f"{self.api_prefix}register/", data=json.dumps(payload), content_type="application/json",
+                f"{self.api_prefix}register/",
+                data=json.dumps(payload),
+                content_type="application/json",
             )
             self.assertEqual(resp.status_code, 200)
             users.append(resp.json())
@@ -271,7 +427,7 @@ class ConversationsApiTests(TestCase):
             for user in users:
                 for conversation_id in conversation_ids:
                     message_content = f"message_{i}_" + "".join(
-                        random.choices(string.ascii_letters + string.digits, k=50 * 7),
+                        random.choices(string.ascii_letters + string.digits, k=50 * 7),  # noqa: S311
                     )
                     message = {
                         "content": message_content,
@@ -280,8 +436,7 @@ class ConversationsApiTests(TestCase):
                     }
                     resp = self.client.post(
                         f"{self.api_prefix}chat/{conversation_id}/messages/",
-                        data=json.dumps(message),
-                        content_type="application/json",
+                        data={"message": json.dumps(message)},
                         HTTP_USER_ID=user["id"],
                     )
                     self.assertEqual(resp.status_code, 200)
@@ -289,7 +444,8 @@ class ConversationsApiTests(TestCase):
         # Performance test: measure message retrieval time
         t0 = time.perf_counter()
         resp = self.client.get(
-            f"{self.api_prefix}chat/{conversation_ids[0]}/messages/", HTTP_USER_ID=users[0]["id"],
+            f"{self.api_prefix}chat/{conversation_ids[0]}/messages/",
+            HTTP_USER_ID=users[0]["id"],
         )
         t1 = time.perf_counter()
 
@@ -298,7 +454,7 @@ class ConversationsApiTests(TestCase):
         self.assertTrue(isinstance(retrieved_messages, list))
 
         retrieval_time = round(t1 - t0, 5)
-        print(f"\n{retrieval_time} s to fetch {len(retrieved_messages)} messages")
+        print(f"\n{retrieval_time} s to fetch {len(retrieved_messages)} messages")  # noqa: T201
 
         # Assert that we have the expected number of messages (20 messages * 5 users = 100 messages per conversation)
         self.assertEqual(len(retrieved_messages), 100)
