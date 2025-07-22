@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "vite preview",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc -b --noEmit --pretty"
   },
   "engines": {
     "node": ">=22.12.0"
