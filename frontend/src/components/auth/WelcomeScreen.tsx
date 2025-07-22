@@ -1,12 +1,3 @@
-import { useEffect, useState } from 'react'
-import type { UserResponse, Conversation } from '@/api/generated'
-import {
-  apiApiListConversations,
-  apiApiGetUsers,
-  apiApiPatchConversation,
-} from '@/api/generated'
-import AppHeader from '@/components/layout/AppHeader'
-import { Button } from '@/components/ui/button'
 import {
   MessageCircle,
   MessageSquare,
@@ -17,10 +8,22 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+
+import type { UserResponse, Conversation } from '@/api/generated'
+import {
+  apiApiListConversations,
+  apiApiGetUsers,
+  apiApiPatchConversation,
+} from '@/api/generated'
+import AppHeader from '@/components/layout/AppHeader'
+import { Button } from '@/components/ui/button'
 import { showToast } from '@/lib/toast'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import FunBackground from '@/components/ui/fun-background'
+
 import JoinChatModal from './JoinChatModal'
 import NewChatModal from './NewChatModal'
 
@@ -37,9 +40,11 @@ export default function WelcomeScreen({
   onLogout,
   onJoinChat,
 }: WelcomeScreenProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   const [users, setUsers] = useState<Record<string, UserResponse>>({})
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const fetchUsers = async () => {
     if (!user) return
@@ -214,6 +219,23 @@ export default function WelcomeScreen({
     )
   }
 
+  const SWIPE_LIMIT = -105 // negative = swipe left
+  const handleDelete = async (conversationId: string) => {
+    console.log('handleDelete', conversationId)
+    if (!user) return
+    try {
+      setConversations(conversations.filter(c => c.id !== conversationId))
+      // TODO: delete conversation from backend
+      showToast.success(
+        'Conversation deleted',
+        'The conversation has been deleted.'
+      )
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+      showToast.error('Failed to delete conversation', 'Please try again.')
+    }
+  }
+
   if (user) {
     return (
       <div className="flex flex-col h-full">
@@ -263,91 +285,142 @@ export default function WelcomeScreen({
               </div>
             ) : (
               <div className="space-y-0 border-y overflow-hidden bg-card">
-                {conversations.map((conversation, index) => (
-                  <div
-                    key={conversation.id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors duration-200 backdrop-blur-lg"
-                    onClick={() => onJoinChat?.(conversation)}
-                  >
-                    <div className="px-6 py-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-4">
-                              {!conversation.is_visible ? (
-                                <MessageSquareOff className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                              )}
-                              <h3 className="font-semibold truncate">
-                                {conversation.name || 'Unnamed Chat'}
-                              </h3>
+                {conversations.map((conversation, index) => {
+                  const isOpen = openId === conversation.id
+
+                  return (
+                    conversation.id && (
+                      <div className="relative" key={conversation.id}>
+                        {/* Background Delete Button */}
+                        <div
+                          className={`absolute inset-0 flex justify-end items-center pr-4 z-0 ${
+                            isOpen ? 'visible' : 'invisible'
+                          }`}
+                        >
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleDelete(conversation.id!)}
+                            className="z-10"
+                          >
+                            Delete
+                          </Button>
+                        </div>
+
+                        {/* Draggable Foreground */}
+                        <motion.div
+                          drag="x"
+                          dragConstraints={{ left: SWIPE_LIMIT, right: 0 }}
+                          onDragStart={() => {
+                            setIsDragging(true)
+                          }}
+                          onDragEnd={(_, info) => {
+                            setIsDragging(false)
+                            if (info.offset.x < SWIPE_LIMIT / 2) {
+                              setOpenId(conversation.id!) // stay open
+                            } else {
+                              setOpenId(null) // close
+                            }
+                          }}
+                          animate={{ x: isOpen ? SWIPE_LIMIT : 0 }}
+                          transition={{
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 30,
+                          }}
+                          className="relative z-10 cursor-grab"
+                        >
+                          <div
+                            key={conversation.id}
+                            className="cursor-pointer hover:bg-muted/50 transition-colors duration-200 backdrop-blur-lg"
+                            onClick={() => {
+                              if (!isDragging) {
+                                onJoinChat?.(conversation)
+                              }
+                            }}
+                          >
+                            <div className="px-6 py-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-4">
+                                      {!conversation.is_visible ? (
+                                        <MessageSquareOff className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                      <h3 className="font-semibold truncate">
+                                        {conversation.name || 'Unnamed Chat'}
+                                      </h3>
+                                    </div>
+                                    {renderUserAvatars(conversation.users_ids)}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {/* Visibility toggle button - only show for conversation creator */}
+                                  {conversation.users_ids &&
+                                    conversation.users_ids.length > 0 &&
+                                    conversation.users_ids[0] === user.id && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={e => {
+                                          e.stopPropagation()
+                                          handleToggleVisibility(conversation)
+                                        }}
+                                        className="h-6 w-6 p-0"
+                                        title={
+                                          conversation.is_visible
+                                            ? 'Hide conversation'
+                                            : 'Reveal conversation'
+                                        }
+                                      >
+                                        {conversation.is_visible ? (
+                                          <EyeOff className="h-3 w-3" />
+                                        ) : (
+                                          <Eye className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                    )}
+                                  {/* Lock/Unlock button - only show for conversation creator */}
+                                  {conversation.users_ids &&
+                                    conversation.users_ids.length > 0 &&
+                                    conversation.users_ids[0] === user.id && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={e => {
+                                          e.stopPropagation()
+                                          handleUnlockConversation(conversation)
+                                        }}
+                                        className="h-6 w-6 p-0"
+                                        title={
+                                          conversation.is_locked
+                                            ? 'Unlock conversation'
+                                            : 'Lock conversation'
+                                        }
+                                      >
+                                        {conversation.is_locked ? (
+                                          <Unlock className="h-3 w-3" />
+                                        ) : (
+                                          <Lock className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                    )}
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    #{conversation.id}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            {renderUserAvatars(conversation.users_ids)}
+                            {index < conversations.length - 1 && (
+                              <div className="border-t border-border mx-6" />
+                            )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {/* Visibility toggle button - only show for conversation creator */}
-                          {conversation.users_ids &&
-                            conversation.users_ids.length > 0 &&
-                            conversation.users_ids[0] === user.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  handleToggleVisibility(conversation)
-                                }}
-                                className="h-6 w-6 p-0"
-                                title={
-                                  conversation.is_visible
-                                    ? 'Hide conversation'
-                                    : 'Reveal conversation'
-                                }
-                              >
-                                {conversation.is_visible ? (
-                                  <EyeOff className="h-3 w-3" />
-                                ) : (
-                                  <Eye className="h-3 w-3" />
-                                )}
-                              </Button>
-                            )}
-                          {/* Lock/Unlock button - only show for conversation creator */}
-                          {conversation.users_ids &&
-                            conversation.users_ids.length > 0 &&
-                            conversation.users_ids[0] === user.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  handleUnlockConversation(conversation)
-                                }}
-                                className="h-6 w-6 p-0"
-                                title={
-                                  conversation.is_locked
-                                    ? 'Unlock conversation'
-                                    : 'Lock conversation'
-                                }
-                              >
-                                {conversation.is_locked ? (
-                                  <Unlock className="h-3 w-3" />
-                                ) : (
-                                  <Lock className="h-3 w-3" />
-                                )}
-                              </Button>
-                            )}
-                          <span className="font-mono text-xs text-muted-foreground">
-                            #{conversation.id}
-                          </span>
-                        </div>
+                        </motion.div>
                       </div>
-                    </div>
-                    {index < conversations.length - 1 && (
-                      <div className="border-t border-border mx-6" />
-                    )}
-                  </div>
-                ))}
+                    )
+                  )
+                })}
               </div>
             )}
           </div>
