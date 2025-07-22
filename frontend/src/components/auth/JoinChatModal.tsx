@@ -17,7 +17,7 @@ import type { Conversation, UserResponse } from '@/api/generated'
 
 interface JoinChatModalProps {
   user: UserResponse
-  onJoinChat: ({ id, name }: Conversation) => void
+  onJoinChat: (conversation: Conversation) => void
   onConversationJoined?: () => void
 }
 
@@ -46,10 +46,7 @@ export default function JoinChatModal({
 
         if (response.data) {
           const conversation = response.data
-          onJoinChat({
-            id: conversation.id,
-            name: conversation.name || 'Unnamed Chat',
-          })
+          onJoinChat(conversation)
           onConversationJoined?.()
           setConversationId('')
           setIsOpen(false)

@@ -18,19 +18,19 @@ import type { UserResponse, Conversation } from '@/api/generated'
 
 interface NewChatModalProps {
   user: UserResponse
-  onGoToChat?: ({ id, name }: Conversation) => void
+  onJoinChat?: (conversation: Conversation) => void
   onConversationCreated?: () => void
 }
 
 export default function NewChatModal({
   user,
-  onGoToChat,
+  onJoinChat,
   onConversationCreated,
 }: NewChatModalProps) {
   const [conversationName, setConversationName] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [conversation, setConversation] = useState<Conversation | null>(null)
   const [copied, setCopied] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,6 +40,8 @@ export default function NewChatModal({
       try {
         const conversationData: Conversation = {
           name: conversationName.trim(),
+          is_locked: false,
+          is_visible: false,
         }
 
         const response = await apiApiCreateConversation({
@@ -49,9 +51,8 @@ export default function NewChatModal({
           },
         })
 
-        if (response.data && 'id' in response.data) {
-          const id = response.data.id!
-          setConversationId(id)
+        if (response.data) {
+          setConversation(response.data)
           showToast.success(
             'Chat created successfully!',
             'Share the conversation ID with others to join.'
@@ -74,15 +75,15 @@ export default function NewChatModal({
     setIsOpen(open)
     if (!open) {
       setConversationName('')
-      setConversationId(null)
+      setConversation(null)
       setCopied(false)
     }
   }
 
   const copyToClipboard = async () => {
-    if (conversationId) {
+    if (conversation?.id) {
       try {
-        await navigator.clipboard.writeText(conversationId)
+        await navigator.clipboard.writeText(conversation.id)
         setCopied(true)
         showToast.success(
           'Conversation ID copied!',
@@ -99,11 +100,8 @@ export default function NewChatModal({
   }
 
   const handleGoToChat = () => {
-    if (conversationId && onGoToChat) {
-      onGoToChat({
-        id: conversationId,
-        name: conversationName,
-      })
+    if (conversation && onJoinChat) {
+      onJoinChat(conversation)
       setIsOpen(false)
     }
   }
@@ -118,7 +116,7 @@ export default function NewChatModal({
         <Button className="gradient-btn text-white">New party chat</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        {!conversationId ? (
+        {!conversation ? (
           <>
             <DialogHeader>
               <DialogTitle>Create New Party Chat</DialogTitle>
@@ -174,7 +172,7 @@ export default function NewChatModal({
                 <div className="flex gap-2">
                   <Input
                     id="conversation-id"
-                    value={conversationId}
+                    value={conversation?.id}
                     readOnly
                     className="font-mono text-lg text-center"
                   />

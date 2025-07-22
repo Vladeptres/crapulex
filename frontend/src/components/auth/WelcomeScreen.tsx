@@ -29,7 +29,6 @@ interface WelcomeScreenProps {
   onLogin: () => void
   onLogout: () => void
   onJoinChat?: (conversation: Conversation) => void
-  onGoToChat?: (conversation: Conversation) => void
 }
 
 export default function WelcomeScreen({
@@ -37,7 +36,6 @@ export default function WelcomeScreen({
   onLogin,
   onLogout,
   onJoinChat,
-  onGoToChat,
 }: WelcomeScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -96,12 +94,6 @@ export default function WelcomeScreen({
       fetchUsers()
     }
   }, [user])
-
-  const handleGoToConversation = (conversation: Conversation) => {
-    if (conversation.id && onGoToChat) {
-      onGoToChat(conversation)
-    }
-  }
 
   const handleUnlockConversation = async (conversation: Conversation) => {
     if (!user) return
@@ -256,7 +248,7 @@ export default function WelcomeScreen({
                   <div className="flex gap-4 justify-center">
                     <NewChatModal
                       user={user}
-                      onGoToChat={onGoToChat}
+                      onJoinChat={onJoinChat}
                       onConversationCreated={fetchConversations}
                     />
                     {onJoinChat && (
@@ -275,7 +267,7 @@ export default function WelcomeScreen({
                   <div
                     key={conversation.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors duration-200 backdrop-blur-lg"
-                    onClick={() => handleGoToConversation(conversation)}
+                    onClick={() => onJoinChat?.(conversation)}
                   >
                     <div className="px-6 py-3">
                       <div className="flex items-center justify-between">
@@ -373,7 +365,7 @@ export default function WelcomeScreen({
           <div className="px-6 py-3 pb-6 border-t bg-card flex gap-3 justify-center">
             <NewChatModal
               user={user}
-              onGoToChat={onGoToChat}
+              onJoinChat={onJoinChat}
               onConversationCreated={fetchConversations}
             />
             {onJoinChat && (

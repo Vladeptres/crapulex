@@ -45,17 +45,6 @@ function App() {
     setCurrentConversation(conversation)
   }
 
-  const handleGoToChat = (conversation: Conversation) => {
-    if (currentConversation && currentConversation.id === conversation.id) {
-      // Already in the right conversation, just ensure it's set
-      setCurrentConversation(currentConversation)
-    } else {
-      // This would typically fetch the conversation details from the API
-      // For now, we'll use a placeholder name
-      setCurrentConversation(conversation)
-    }
-  }
-
   const handleBackToHome = () => {
     setCurrentConversation(null)
   }
@@ -91,7 +80,6 @@ function App() {
               onLogin={() => setShowLogin(true)}
               onLogout={handleLogout}
               onJoinChat={handleJoinChat}
-              onGoToChat={handleGoToChat}
             />
           )}
         </main>
