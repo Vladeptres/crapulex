@@ -1,13 +1,7 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Literal
 
-import emoji as emj
-from pydantic import AfterValidator, BaseModel, field_serializer
-
-
-class UserPayload(BaseModel):
-    username: str
-    password: str
+from pydantic import BaseModel
 
 
 class User(BaseModel):
@@ -19,32 +13,33 @@ class User(BaseModel):
 
 
 class React(BaseModel):
-    emoji: Annotated[str, AfterValidator(lambda s: emj.emojize(s))]
-    issuer_id: str | None = None
+    emoji: str
+    issuer_id: str
 
-    @field_serializer("emoji")
-    def serialize_emoji(self, emoji: str):
-        return emj.emojize(emoji)
+
+class MediaMetadata(BaseModel):
+    id: str
+    uri: str
+    key: str
+    size: int | float
+    type: Literal["image", "video", "audio"]
+    issuer_id: str
+    timestamp: datetime
 
 
 class Message(BaseModel):
-    id: str = None
+    id: str
     content: str
     conversation_id: str
     issuer_id: str
-    timestamp: datetime = None
-    reacts: list[React] = []
+    timestamp: datetime
+    reacts: list[React]
+    medias_metadatas: list[MediaMetadata]
 
 
 class Conversation(BaseModel):
-    id: str = None
-    users_ids: list[str] = []
-    name: str = "Name me 😘"
-    is_locked: bool = True
-    is_visible: bool = False
-
-
-class MongoConversationStoreModel(BaseModel):
-    type: Literal["mongo_db"] = "mongo_db"
-    db_uri: str
-    conversation_id: str | None = None
+    id: str
+    users_ids: list[str]
+    name: str
+    is_locked: bool
+    is_visible: bool
