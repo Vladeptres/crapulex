@@ -178,7 +178,7 @@ export default function WelcomeScreen({
   const renderUserAvatars = (userIds: string[] | undefined) => {
     if (!userIds || userIds.length === 0) {
       return (
-        <div className="flex items-center gap-1 text-muted-foreground">
+        <div className="items-center gap-1 text-muted-foreground invisible md:visible">
           <Users className="h-4 w-4" />
           <span className="text-sm">0 members</span>
         </div>
@@ -190,24 +190,26 @@ export default function WelcomeScreen({
     const hasMoreUsers = userIds.length > maxAvatars
 
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 invisible md:visible">
         <div className="flex -space-x-2">
           {displayUsers.map(userId => {
             const user = users[userId]
             return (
-              <Avatar
-                key={userId}
-                className="h-6 w-6 border-2 border-background"
-                title={user?.username || userId}
-              >
-                <AvatarImage
-                  src={getGravatarUrl(user?.username || userId, 100)}
-                  alt={user?.username || userId}
-                />
-                <AvatarFallback className="text-xs">
-                  {getUserInitials(user?.username || userId)}
-                </AvatarFallback>
-              </Avatar>
+              user && (
+                <Avatar
+                  key={userId}
+                  className="h-6 w-6 border-2 border-background"
+                  title={user.username}
+                >
+                  <AvatarImage
+                    src={getGravatarUrl(user.username, 100)}
+                    alt={user.username}
+                  />
+                  <AvatarFallback className="text-xs">
+                    {getUserInitials(user.username)}
+                  </AvatarFallback>
+                </Avatar>
+              )
             )
           })}
         </div>
