@@ -1,6 +1,6 @@
 import { LogOut, Palette } from 'lucide-react'
 
-import type { User } from '@/api/generated'
+import type { UserResponse } from '@/api/generated'
 import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -15,7 +15,7 @@ import {
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 
 interface AppHeaderProps {
-  user: User | null
+  user: UserResponse | null
   onLogout: () => void
 }
 

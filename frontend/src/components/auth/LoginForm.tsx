@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { conversationsApiApiLogin } from '@/api/generated/sdk.gen'
-import type { User } from '@/api/generated'
+import { apiApiLogin } from '@/api/generated'
+import type { UserResponse } from '@/api/generated'
 
 interface LoginFormData {
   email: string
@@ -14,7 +14,7 @@ interface LoginFormData {
 }
 
 interface LoginFormProps {
-  onSubmit: (user: User) => void
+  onSubmit: (user: UserResponse) => void
   onSwitchToSignup: () => void
 }
 
@@ -69,7 +69,7 @@ export default function LoginForm({
     setError(null)
 
     try {
-      const response = await conversationsApiApiLogin<true>({
+      const response = await apiApiLogin<true>({
         body: {
           username: formData.email,
           password: formData.password,

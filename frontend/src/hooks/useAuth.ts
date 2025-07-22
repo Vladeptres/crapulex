@@ -1,8 +1,8 @@
-import type { User } from '@/api/generated'
+import type { UserResponse } from '@/api/generated'
 import { useState, useEffect } from 'react'
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export function useAuth() {
     setIsLoading(false)
   }, [])
 
-  const login = (userData: User) => {
+  const login = (userData: UserResponse) => {
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
   }

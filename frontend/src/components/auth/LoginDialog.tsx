@@ -8,14 +8,14 @@ import {
   DialogOverlay,
   DialogPortal,
 } from '@/components/ui/dialog'
-import type { User } from '@/api/generated'
+import type { UserResponse } from '@/api/generated'
 import LoginForm from './LoginForm'
 import SignupForm from './SignupForm'
 
 interface LoginDialogProps {
   isOpen: boolean
   onClose: () => void
-  onLoginSuccess: (user: User) => void
+  onLoginSuccess: (user: UserResponse) => void
 }
 
 type AuthMode = 'login' | 'signup'
@@ -27,7 +27,7 @@ export default function LoginDialog({
 }: LoginDialogProps) {
   const [mode, setMode] = useState<AuthMode>('login')
 
-  const handleLoginSuccess = (user: User) => {
+  const handleLoginSuccess = (user: UserResponse) => {
     onLoginSuccess(user)
     onClose()
     // Reset to login mode when dialog closes

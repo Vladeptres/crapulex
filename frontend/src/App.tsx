@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 import { client } from '@/api/generated/client.gen'
-import type { Conversation, User } from '@/api/generated'
+import type { Conversation, UserResponse } from '@/api/generated'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
@@ -28,7 +28,7 @@ function App() {
     }
   }, [isLoading, user])
 
-  const handleLoginSuccess = (userData: User) => {
+  const handleLoginSuccess = (userData: UserResponse) => {
     login(userData)
     setShowLogin(false)
   }

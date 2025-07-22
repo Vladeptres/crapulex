@@ -13,11 +13,11 @@ import {
 } from '@/components/ui/dialog'
 import { showToast } from '@/lib/toast'
 import { Copy, Check, MessageCircle } from 'lucide-react'
-import { conversationsApiApiCreateConversation } from '@/api/generated'
-import type { User, Conversation } from '@/api/generated'
+import { apiApiCreateConversation } from '@/api/generated'
+import type { UserResponse, Conversation } from '@/api/generated'
 
 interface NewChatModalProps {
-  user: User
+  user: UserResponse
   onGoToChat?: ({ id, name }: Conversation) => void
   onConversationCreated?: () => void
 }
@@ -42,7 +42,7 @@ export default function NewChatModal({
           name: conversationName.trim(),
         }
 
-        const response = await conversationsApiApiCreateConversation({
+        const response = await apiApiCreateConversation({
           body: conversationData,
           headers: {
             'User-Id': user.id,

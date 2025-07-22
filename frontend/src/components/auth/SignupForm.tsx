@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { conversationsApiApiRegisterUser } from '@/api/generated/sdk.gen'
+import { apiApiRegisterUser } from '@/api/generated'
 import type { UserPayload } from '@/api/generated'
 
 interface SignupFormData {
@@ -84,7 +84,7 @@ export default function SignupForm({
         password: formData.password,
       }
 
-      await conversationsApiApiRegisterUser<true>({
+      await apiApiRegisterUser<true>({
         body: payload,
       })
 

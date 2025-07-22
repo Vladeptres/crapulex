@@ -3,11 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
 import { showToast } from '@/lib/toast'
-import type { User, Message, Conversation } from '@/api/generated'
+import type { UserResponse, Message, Conversation } from '@/api/generated'
 import {
-  conversationsApiApiGetMessages,
-  conversationsApiApiPostMessage,
-  conversationsApiApiGetUsers,
+  apiApiGetMessages,
+  apiApiPostMessage,
+  apiApiGetUsers,
 } from '@/api/generated'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -15,7 +15,7 @@ import FunBackground from '@/components/ui/fun-background'
 
 interface ChatPageProps {
   conversation: Conversation
-  user: User
+  user: UserResponse
   onSendMessage?: (message: string) => void
   onBackToHome: () => void
   messages?: Message[]
@@ -35,7 +35,7 @@ export default function ChatPage({
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
-  const [users, setUsers] = useState<Record<string, User>>({})
+  const [users, setUsers] = useState<Record<string, UserResponse>>({})
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
     null
   )
@@ -107,7 +107,7 @@ export default function ChatPage({
     }
 
     try {
-      const response = await conversationsApiApiGetMessages({
+      const response = await apiApiGetMessages({
         path: {
           conversation_id: conversation.id || '',
         },
@@ -153,14 +153,14 @@ export default function ChatPage({
 
   const fetchUsers = async () => {
     try {
-      const response = await conversationsApiApiGetUsers({
+      const response = await apiApiGetUsers({
         headers: {
           'User-Id': user.id,
         },
       })
 
       if (response.data && Array.isArray(response.data)) {
-        const usersMap: Record<string, User> = {}
+        const usersMap: Record<string, UserResponse> = {}
         response.data.forEach(user => {
           usersMap[user.id] = user
         })
@@ -186,7 +186,7 @@ export default function ChatPage({
           issuer_id: user.id,
         }
 
-        const response = await conversationsApiApiPostMessage({
+        const response = await apiApiPostMessage({
           path: {
             conversation_id: conversation.id || '',
           },

@@ -11,12 +11,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { conversationsApiApiJoinConversation } from '@/api/generated'
+import { apiApiJoinConversation } from '@/api/generated'
 import { showToast } from '@/lib/toast'
-import type { Conversation, User } from '@/api/generated'
+import type { Conversation, UserResponse } from '@/api/generated'
 
 interface JoinChatModalProps {
-  user: User
+  user: UserResponse
   onJoinChat: ({ id, name }: Conversation) => void
   onConversationJoined?: () => void
 }
@@ -35,7 +35,7 @@ export default function JoinChatModal({
     if (conversationId.trim() && !isLoading) {
       setIsLoading(true)
       try {
-        const response = await conversationsApiApiJoinConversation({
+        const response = await apiApiJoinConversation({
           path: {
             conversation_id: conversationId.trim(),
           },

@@ -2,39 +2,39 @@
 
 import type { Options as ClientOptions, TDataShape, Client } from './client'
 import type {
-  ConversationsApiApiRegisterUserData,
-  ConversationsApiApiRegisterUserResponses,
-  ConversationsApiApiRegisterUserErrors,
-  ConversationsApiApiLoginData,
-  ConversationsApiApiLoginResponses,
-  ConversationsApiApiLoginErrors,
-  ConversationsApiApiListConversationsData,
-  ConversationsApiApiListConversationsResponses,
-  ConversationsApiApiListConversationsErrors,
-  ConversationsApiApiCreateConversationData,
-  ConversationsApiApiCreateConversationResponses,
-  ConversationsApiApiCreateConversationErrors,
-  ConversationsApiApiJoinConversationData,
-  ConversationsApiApiJoinConversationResponses,
-  ConversationsApiApiJoinConversationErrors,
-  ConversationsApiApiGetMessagesData,
-  ConversationsApiApiGetMessagesResponses,
-  ConversationsApiApiGetMessagesErrors,
-  ConversationsApiApiPostMessageData,
-  ConversationsApiApiPostMessageResponses,
-  ConversationsApiApiPostMessageErrors,
-  ConversationsApiApiGetConversationData,
-  ConversationsApiApiGetConversationResponses,
-  ConversationsApiApiGetConversationErrors,
-  ConversationsApiApiPatchConversationData,
-  ConversationsApiApiPatchConversationResponses,
-  ConversationsApiApiPatchConversationErrors,
-  ConversationsApiApiGetUsersData,
-  ConversationsApiApiGetUsersResponses,
-  ConversationsApiApiGetUsersErrors,
-  ConversationsApiApiPatchMessageData,
-  ConversationsApiApiPatchMessageResponses,
-  ConversationsApiApiPatchMessageErrors,
+  ApiApiRegisterUserData,
+  ApiApiRegisterUserResponses,
+  ApiApiRegisterUserErrors,
+  ApiApiLoginData,
+  ApiApiLoginResponses,
+  ApiApiLoginErrors,
+  ApiApiListConversationsData,
+  ApiApiListConversationsResponses,
+  ApiApiListConversationsErrors,
+  ApiApiCreateConversationData,
+  ApiApiCreateConversationResponses,
+  ApiApiCreateConversationErrors,
+  ApiApiJoinConversationData,
+  ApiApiJoinConversationResponses,
+  ApiApiJoinConversationErrors,
+  ApiApiGetMessagesData,
+  ApiApiGetMessagesResponses,
+  ApiApiGetMessagesErrors,
+  ApiApiPostMessageData,
+  ApiApiPostMessageResponses,
+  ApiApiPostMessageErrors,
+  ApiApiGetConversationData,
+  ApiApiGetConversationResponses,
+  ApiApiGetConversationErrors,
+  ApiApiPatchConversationData,
+  ApiApiPatchConversationResponses,
+  ApiApiPatchConversationErrors,
+  ApiApiGetUsersData,
+  ApiApiGetUsersResponses,
+  ApiApiGetUsersErrors,
+  ApiApiPatchMessageData,
+  ApiApiPatchMessageResponses,
+  ApiApiPatchMessageErrors,
 } from './types.gen'
 import { client as _heyApiClient } from './client.gen'
 
@@ -58,14 +58,12 @@ export type Options<
 /**
  * Register User
  */
-export const conversationsApiApiRegisterUser = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiRegisterUserData, ThrowOnError>
+export const apiApiRegisterUser = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiRegisterUserData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiRegisterUserResponses,
-    ConversationsApiApiRegisterUserErrors,
+    ApiApiRegisterUserResponses,
+    ApiApiRegisterUserErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -81,12 +79,12 @@ export const conversationsApiApiRegisterUser = <
 /**
  * Login
  */
-export const conversationsApiApiLogin = <ThrowOnError extends boolean = true>(
-  options: Options<ConversationsApiApiLoginData, ThrowOnError>
+export const apiApiLogin = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiLoginData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiLoginResponses,
-    ConversationsApiApiLoginErrors,
+    ApiApiLoginResponses,
+    ApiApiLoginErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -102,14 +100,12 @@ export const conversationsApiApiLogin = <ThrowOnError extends boolean = true>(
 /**
  * List Conversations
  */
-export const conversationsApiApiListConversations = <
-  ThrowOnError extends boolean = true,
->(
-  options?: Options<ConversationsApiApiListConversationsData, ThrowOnError>
+export const apiApiListConversations = <ThrowOnError extends boolean = true>(
+  options?: Options<ApiApiListConversationsData, ThrowOnError>
 ) => {
   return (options?.client ?? _heyApiClient).get<
-    ConversationsApiApiListConversationsResponses,
-    ConversationsApiApiListConversationsErrors,
+    ApiApiListConversationsResponses,
+    ApiApiListConversationsErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -121,14 +117,12 @@ export const conversationsApiApiListConversations = <
 /**
  * Create Conversation
  */
-export const conversationsApiApiCreateConversation = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiCreateConversationData, ThrowOnError>
+export const apiApiCreateConversation = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiCreateConversationData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiCreateConversationResponses,
-    ConversationsApiApiCreateConversationErrors,
+    ApiApiCreateConversationResponses,
+    ApiApiCreateConversationErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -144,14 +138,12 @@ export const conversationsApiApiCreateConversation = <
 /**
  * Join Conversation
  */
-export const conversationsApiApiJoinConversation = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiJoinConversationData, ThrowOnError>
+export const apiApiJoinConversation = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiJoinConversationData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiJoinConversationResponses,
-    ConversationsApiApiJoinConversationErrors,
+    ApiApiJoinConversationResponses,
+    ApiApiJoinConversationErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -163,14 +155,12 @@ export const conversationsApiApiJoinConversation = <
 /**
  * Get Messages
  */
-export const conversationsApiApiGetMessages = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiGetMessagesData, ThrowOnError>
+export const apiApiGetMessages = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiGetMessagesData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).get<
-    ConversationsApiApiGetMessagesResponses,
-    ConversationsApiApiGetMessagesErrors,
+    ApiApiGetMessagesResponses,
+    ApiApiGetMessagesErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -182,14 +172,12 @@ export const conversationsApiApiGetMessages = <
 /**
  * Post Message
  */
-export const conversationsApiApiPostMessage = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiPostMessageData, ThrowOnError>
+export const apiApiPostMessage = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiPostMessageData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).post<
-    ConversationsApiApiPostMessageResponses,
-    ConversationsApiApiPostMessageErrors,
+    ApiApiPostMessageResponses,
+    ApiApiPostMessageErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -205,14 +193,12 @@ export const conversationsApiApiPostMessage = <
 /**
  * Get Conversation
  */
-export const conversationsApiApiGetConversation = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiGetConversationData, ThrowOnError>
+export const apiApiGetConversation = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiGetConversationData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).get<
-    ConversationsApiApiGetConversationResponses,
-    ConversationsApiApiGetConversationErrors,
+    ApiApiGetConversationResponses,
+    ApiApiGetConversationErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -224,14 +210,12 @@ export const conversationsApiApiGetConversation = <
 /**
  * Patch Conversation
  */
-export const conversationsApiApiPatchConversation = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiPatchConversationData, ThrowOnError>
+export const apiApiPatchConversation = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiPatchConversationData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).patch<
-    ConversationsApiApiPatchConversationResponses,
-    ConversationsApiApiPatchConversationErrors,
+    ApiApiPatchConversationResponses,
+    ApiApiPatchConversationErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -247,14 +231,12 @@ export const conversationsApiApiPatchConversation = <
 /**
  * Get Users
  */
-export const conversationsApiApiGetUsers = <
-  ThrowOnError extends boolean = true,
->(
-  options?: Options<ConversationsApiApiGetUsersData, ThrowOnError>
+export const apiApiGetUsers = <ThrowOnError extends boolean = true>(
+  options?: Options<ApiApiGetUsersData, ThrowOnError>
 ) => {
   return (options?.client ?? _heyApiClient).get<
-    ConversationsApiApiGetUsersResponses,
-    ConversationsApiApiGetUsersErrors,
+    ApiApiGetUsersResponses,
+    ApiApiGetUsersErrors,
     ThrowOnError
   >({
     responseType: 'json',
@@ -266,14 +248,12 @@ export const conversationsApiApiGetUsers = <
 /**
  * Patch Message
  */
-export const conversationsApiApiPatchMessage = <
-  ThrowOnError extends boolean = true,
->(
-  options: Options<ConversationsApiApiPatchMessageData, ThrowOnError>
+export const apiApiPatchMessage = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiPatchMessageData, ThrowOnError>
 ) => {
   return (options.client ?? _heyApiClient).patch<
-    ConversationsApiApiPatchMessageResponses,
-    ConversationsApiApiPatchMessageErrors,
+    ApiApiPatchMessageResponses,
+    ApiApiPatchMessageErrors,
     ThrowOnError
   >({
     responseType: 'json',

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { User, Conversation } from '@/api/generated'
+import type { UserResponse, Conversation } from '@/api/generated'
 import {
-  conversationsApiApiListConversations,
-  conversationsApiApiGetUsers,
-  conversationsApiApiPatchConversation,
+  apiApiListConversations,
+  apiApiGetUsers,
+  apiApiPatchConversation,
 } from '@/api/generated'
 import AppHeader from '@/components/layout/AppHeader'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import JoinChatModal from './JoinChatModal'
 import NewChatModal from './NewChatModal'
 
 interface WelcomeScreenProps {
-  user: User | null
+  user: UserResponse | null
   onLogin: () => void
   onLogout: () => void
   onJoinChat?: (conversation: Conversation) => void
@@ -39,20 +39,20 @@ export default function WelcomeScreen({
 }: WelcomeScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [users, setUsers] = useState<Record<string, User>>({})
+  const [users, setUsers] = useState<Record<string, UserResponse>>({})
 
   const fetchUsers = async () => {
     if (!user) return
 
     try {
-      const response = await conversationsApiApiGetUsers({
+      const response = await apiApiGetUsers({
         headers: {
           'User-Id': user.id,
         },
       })
 
       if (response.data && Array.isArray(response.data)) {
-        const usersMap: Record<string, User> = {}
+        const usersMap: Record<string, UserResponse> = {}
         response.data.forEach(user => {
           usersMap[user.id] = user
         })
@@ -68,7 +68,7 @@ export default function WelcomeScreen({
 
     setIsLoading(true)
     try {
-      const response = await conversationsApiApiListConversations({
+      const response = await apiApiListConversations({
         headers: {
           'User-Id': user.id,
         },
@@ -106,7 +106,7 @@ export default function WelcomeScreen({
 
     try {
       const newLockState = !conversation.is_locked
-      await conversationsApiApiPatchConversation({
+      await apiApiPatchConversation({
         path: {
           conversation_id: conversation.id || '',
         },
