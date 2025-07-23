@@ -31,6 +31,7 @@ class ConversationUpdate(BaseModel):
     name: str = None
     is_locked: bool = None
     is_visible: bool = None
+    admin_id: str = None
 
 
 class MessageUpdate(BaseModel):
@@ -94,6 +95,7 @@ class ConversationResponse(BaseModel):
     name: str
     is_locked: bool
     is_visible: bool
+    admin_id: str
 
 
 class SuccessResponse(BaseModel):

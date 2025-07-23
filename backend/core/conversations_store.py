@@ -39,3 +39,28 @@ class ConversationsStore:
             {"$set": conversation.model_dump(exclude_unset=True)},
         )
         logger.info(f"Succesfully updated conversation {conversation.id}")
+
+    def delete_conversation(self, user_id: str, conversation_id: str) -> None:
+        conversation = self.get_conversation(conversation_id)
+        if user_id != conversation.admin_id:
+            raise ValueError("User is not admin of conversation")
+        self.conversations_collection.delete_one({"id": conversation_id})
+        logger.info(f"Succesfully deleted conversation {conversation_id}")
+
+    def leave_conversation(self, user_id: str, conversation_id: str) -> None:
+        conversation = self.get_conversation(conversation_id)
+        if user_id not in conversation.users_ids:
+            raise ValueError("User is not in conversation")
+        if len(conversation.users_ids) == 1:
+            raise ValueError("User is the last one in conversation")
+        self.conversations_collection.update_one({"id": conversation_id}, {"$pull": {"users_ids": user_id}})
+        conversation.users_ids.remove(user_id)
+        logger.info(f"Succesfully left conversation {conversation_id}")
+        if conversation.admin_id == user_id:
+            conversation.admin_id = conversation.users_ids[0]
+        self.conversations_collection.update_one(
+            {"id": conversation_id},
+            {"$set": conversation.model_dump(exclude_unset=True)},
+        )
+        logger.info(f"Promoted user {user_id} to admin of conversation {conversation_id}")
+        return conversation

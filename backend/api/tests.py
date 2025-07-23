@@ -80,7 +80,7 @@ class ConversationsApiTests(TestCase):
         conversation_id = resp.json()["id"]
         self.assertTrue(conversation_id)
 
-    def test_join_conversation(self):
+    def test_join_leave_conversation(self):
         # Register two users
         payload1 = {"username": "user1", "password": "pw1"}
         payload2 = {"username": "user2", "password": "pw2"}
@@ -108,6 +108,8 @@ class ConversationsApiTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["users_ids"], [user_id1])
+        self.assertEqual(resp.json()["name"], "TestJoin")
+        self.assertEqual(resp.json()["admin_id"], user_id1)
         conversation_id = resp.json()["id"]
         # Join conversation with user2
         resp = self.client.post(
@@ -138,6 +140,29 @@ class ConversationsApiTests(TestCase):
         self.assertEqual(resp.json()[0]["id"], user_id1)
         self.assertEqual(resp.json()[1]["username"], "user2")
         self.assertEqual(resp.json()[1]["id"], user_id2)
+
+        # User1 leaves conversation
+        resp = self.client.delete(
+            f"{self.api_prefix}chat/{conversation_id}/leave",
+            HTTP_USER_ID=user_id1,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["users_ids"], [user_id2])
+        self.assertEqual(resp.json()["admin_id"], user_id2)
+
+        # User2 try to leave conversation
+        resp = self.client.delete(
+            f"{self.api_prefix}chat/{conversation_id}/leave",
+            HTTP_USER_ID=user_id2,
+        )
+        self.assertEqual(resp.status_code, 422)
+
+        # User2 deletes conversation
+        resp = self.client.delete(
+            f"{self.api_prefix}chat/{conversation_id}/",
+            HTTP_USER_ID=user_id2,
+        )
+        self.assertEqual(resp.status_code, 200)
 
     def test_post_message(self):
         # Register user

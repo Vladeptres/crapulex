@@ -72,17 +72,17 @@ def test_conversations(stores_registry: StoresRegistry):
     conv_id = stores_registry.create_conversation(user1.id, conv1_create)
     conv2_id = stores_registry.create_conversation(user1.id, conv2_create)
 
-    conversations = stores_registry.list_conversations(user1.id)
+    conversations = stores_registry.get_conversations(user1.id)
     assert len(conversations) == 2
     assert any(c.id == conv_id for c in conversations)
     assert any(c.id == conv2_id for c in conversations)
 
     stores_registry.join_conversation(user2.id, conv_id)
-    conversations = stores_registry.list_conversations(user2.id)
+    conversations = stores_registry.get_conversations(user2.id)
     assert len(conversations) == 1
     assert any(c.id == conv_id for c in conversations)
 
-    conversations = stores_registry.list_conversations(user1.id)
+    conversations = stores_registry.get_conversations(user1.id)
     assert len(conversations) == 2
     assert any(c.id == conv_id for c in conversations)
     assert any(c.id == conv2_id for c in conversations)
@@ -182,3 +182,70 @@ def test_media_upload_retrieval(stores_registry: StoresRegistry):
     assert retrieved_message.medias_metadatas[0].issuer_id == user1.id
     assert retrieved_message.medias_metadatas[0].timestamp is not None
     assert retrieved_message.medias_metadatas[0].presigned_url is not None
+
+
+def test_leave_conversation(stores_registry: StoresRegistry):
+    """Test leaving a conversation."""
+    # Create users
+    user1_creds = UserCredentials(username="user1", password="password")
+    user2_creds = UserCredentials(username="user2", password="password")
+    user1 = stores_registry.register_user(user_credentials=user1_creds)
+    user2 = stores_registry.register_user(user_credentials=user2_creds)
+
+    # Create conversation with user1 as admin
+    conv_create = ConversationCreate(name="Test Leave")
+    conv_id = stores_registry.create_conversation(user1.id, conv_create)
+
+    # Add user2 to conversation
+    stores_registry.join_conversation(user2.id, conv_id)
+
+    # Verify both users are in conversation
+    conversation = stores_registry.get_conversation(conv_id)
+    assert user1.id in conversation.users_ids
+    assert user2.id in conversation.users_ids
+    assert len(conversation.users_ids) == 2
+
+    # User2 leaves conversation
+    stores_registry.leave_conversation(user2.id, conv_id)
+
+    # Verify user2 is no longer in conversation
+    conversation = stores_registry.get_conversation(conv_id)
+    assert user1.id in conversation.users_ids
+    assert user2.id not in conversation.users_ids
+    assert len(conversation.users_ids) == 1
+
+    # Test error case: user not in conversation
+    with pytest.raises(ValueError, match="User is not in conversation"):
+        stores_registry.leave_conversation(user2.id, conv_id)
+
+
+def test_delete_conversation(stores_registry: StoresRegistry):
+    """Test deleting a conversation."""
+    # Create users
+    admin_creds = UserCredentials(username="admin", password="password")
+    user_creds = UserCredentials(username="user", password="password")
+    admin = stores_registry.register_user(user_credentials=admin_creds)
+    user = stores_registry.register_user(user_credentials=user_creds)
+
+    # Create conversation with admin as admin
+    conv_create = ConversationCreate(name="Test Delete")
+    conv_id = stores_registry.create_conversation(admin.id, conv_create)
+
+    # Add user to conversation
+    stores_registry.join_conversation(user.id, conv_id)
+
+    # Verify conversation exists
+    conversation = stores_registry.get_conversation(conv_id)
+    assert conversation.id == conv_id
+    assert conversation.admin_id == admin.id
+
+    # Test error case: non-admin trying to delete
+    with pytest.raises(ValueError, match="User is not admin of conversation"):
+        stores_registry.delete_conversation(user.id, conv_id)
+
+    # Admin deletes conversation
+    stores_registry.delete_conversation(admin.id, conv_id)
+
+    # Verify conversation is deleted (should raise exception when trying to get it)
+    with pytest.raises((ValueError, AttributeError), match=".*"):
+        stores_registry.get_conversation(conv_id)

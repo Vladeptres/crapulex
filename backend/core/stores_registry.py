@@ -72,6 +72,7 @@ class StoresRegistry:
             is_locked=conversation_create.is_locked,
             is_visible=conversation_create.is_visible,
             users_ids=[user_id],
+            admin_id=user_id,
         )
 
         self.conversations_store.add_conversation(conversation=conversation)
@@ -85,7 +86,7 @@ class StoresRegistry:
             raise ValueError("Conversation ID is required to join conversation.")
         self.conversations_store.add_user_id_to_conversation(conversation_id=conversation_id, user_id=user_id)
 
-    def list_conversations(self, user_id: str) -> list[Conversation]:
+    def get_conversations(self, user_id: str) -> list[Conversation]:
         if not user_id:
             raise ValueError("User ID is required to list conversations.")
         return self.conversations_store.get_conversations(user_id=user_id)
@@ -104,6 +105,7 @@ class StoresRegistry:
             name=conversation_update.name or existing_conversation.name,
             is_locked=conversation_update.is_locked or existing_conversation.is_locked,
             is_visible=conversation_update.is_visible or existing_conversation.is_visible,
+            admin_id=conversation_update.admin_id or existing_conversation.admin_id,
         )
 
         self.conversations_store.update_conversation(updated_conversation)
@@ -216,3 +218,9 @@ class StoresRegistry:
             issuer_id=react_post.issuer_id,
         )
         self.messages_store.add_react(react=react, message_id=message_id)
+
+    def delete_conversation(self, user_id: str, conversation_id: str) -> None:
+        self.conversations_store.delete_conversation(user_id=user_id, conversation_id=conversation_id)
+
+    def leave_conversation(self, user_id: str, conversation_id: str) -> Conversation:
+        return self.conversations_store.leave_conversation(user_id=user_id, conversation_id=conversation_id)

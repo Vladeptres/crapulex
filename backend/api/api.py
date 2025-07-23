@@ -13,6 +13,7 @@ from api.models import (
     MessageResponse,
     MessageUpdate,
     ReactPost,
+    SuccessResponse,
     UserCredentials,
     UserResponse,
 )
@@ -48,7 +49,7 @@ def login(request, user_credentials: UserCredentials):
             return 401, {"error": f"Credentials don't match for username {user_credentials.username}"}
         logger.info(f"User with id {user_id} logged in.")
         user = registry.get_user(user_id=user_id)
-        return 200, UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
+        return 200, UserResponse(**user.model_dump())
     except ValueError as e:
         return 401, {"error": str(e)}
     except KeyError:
@@ -67,13 +68,7 @@ def create_conversation(request, conversation: ConversationCreate):
         conversation_id = registry.create_conversation(user_id=user_id, conversation_create=conversation)
         logger.info(f"Conversation created with id: {conversation_id}")
         created_conversation = registry.get_conversation(conversation_id=conversation_id)
-        return 200, ConversationResponse(
-            id=created_conversation.id,
-            users_ids=created_conversation.users_ids,
-            name=created_conversation.name,
-            is_locked=created_conversation.is_locked,
-            is_visible=created_conversation.is_visible,
-        )
+        return 200, ConversationResponse(**created_conversation.model_dump())
     except ValidationError as ve:
         logger.warning(f"Validation error during conversation creation: {ve}")
         return 422, {"error": f"Validation error: {ve}"}
@@ -90,13 +85,7 @@ def join_conversation(request, conversation_id: str):
         registry.join_conversation(user_id=user_id, conversation_id=conversation_id)
         logger.info(f"User {user_id} joined conversation {conversation_id}.")
         conversation = registry.get_conversation(conversation_id=conversation_id)
-        return 200, ConversationResponse(
-            id=conversation.id,
-            users_ids=conversation.users_ids,
-            name=conversation.name,
-            is_locked=conversation.is_locked,
-            is_visible=conversation.is_visible,
-        )
+        return 200, ConversationResponse(**conversation.model_dump())
     except Exception as e:
         logger.error(f"Error joining conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}
@@ -132,13 +121,7 @@ def patch_conversation(request, conversation_id: str, conversation: Conversation
         logger.info(f"Metadata updated for conversation {conversation_id}.")
 
         result_conversation = registry.get_conversation(conversation_id=conversation_id)
-        return 200, ConversationResponse(
-            id=result_conversation.id,
-            users_ids=result_conversation.users_ids,
-            name=result_conversation.name,
-            is_locked=result_conversation.is_locked,
-            is_visible=result_conversation.is_visible,
-        )
+        return 200, ConversationResponse(**result_conversation.model_dump())
     except ValidationError as ve:
         logger.warning(f"Validation error updating metadata for {conversation_id}: {ve}")
         return 422, {"error": f"Validation error: {ve}"}
@@ -165,13 +148,7 @@ def get_conversation(request, conversation_id: str):
         logger.info(f"Received request to get metadata for conversation {conversation_id}.")
         conversation = registry.get_conversation(conversation_id=conversation_id)
         logger.info(f"Fetched metadata for conversation {conversation_id}.")
-        return 200, ConversationResponse(
-            id=conversation.id,
-            users_ids=conversation.users_ids,
-            name=conversation.name,
-            is_locked=conversation.is_locked,
-            is_visible=conversation.is_visible,
-        )
+        return 200, ConversationResponse(**conversation.model_dump())
     except Exception as e:
         logger.error(f"Error fetching metadata for conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}
@@ -185,33 +162,21 @@ def get_users(request):
     try:
         users = registry.get_users(user_ids=users_ids)
         logger.info(f"Fetched {len(users)} users for user_ids {users_ids}.")
-        return 200, [
-            UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
-            for user in users
-        ]
+        return 200, [UserResponse(**user.model_dump()) for user in users]
     except Exception as e:
         logger.error(f"Error fetching users for user_ids {users_ids}: {e}")
         return 500, {"error": str(e)}
 
 
 @api.get("chat/", response={200: list[ConversationResponse], 500: ErrorResponse})
-def list_conversations(request):
+def get_conversations(request):
     user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     try:
         logger.info("Received request to list all conversations.")
-        conversations = registry.list_conversations(user_id=user_id)
+        conversations = registry.get_conversations(user_id=user_id)
         logger.info(f"Fetched {len(conversations)} conversations.")
 
-        conversation_responses = [
-            ConversationResponse(
-                id=conv.id,
-                users_ids=conv.users_ids,
-                name=conv.name,
-                is_locked=conv.is_locked,
-                is_visible=conv.is_visible,
-            )
-            for conv in conversations
-        ]
+        conversation_responses = [ConversationResponse(**conv.model_dump()) for conv in conversations]
 
         return 200, conversation_responses
     except Exception as e:
@@ -233,15 +198,42 @@ def patch_message(request, conversation_id: str, message: MessageUpdate):
         result_message = registry.update_message(message_id=message.id, message_update=message)
         logger.info(f"Message {message.id} updated for conversation {conversation_id}.")
 
-        return 200, MessageResponse(
-            id=result_message.id,
-            content=result_message.content,
-            conversation_id=result_message.conversation_id,
-            issuer_id=result_message.issuer_id,
-            timestamp=result_message.timestamp,
-            reacts=[],
-            medias_metadatas=[],
-        )
+        return 200, MessageResponse(**result_message.model_dump())
     except Exception as e:
         logger.error(f"Error updating message {message.id} for conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.delete(
+    "chat/{conversation_id}/leave",
+    response={200: ConversationResponse, 422: ErrorResponse, 500: ErrorResponse},
+)
+def leave_conversation(request, conversation_id):
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        logger.info(f"Received request to leave conversation {conversation_id} from user {user_id}.")
+        conversation = registry.leave_conversation(user_id=user_id, conversation_id=conversation_id)
+        logger.info(f"User {user_id} left conversation {conversation_id}.")
+        return 200, ConversationResponse(**conversation.model_dump())
+    except ValueError as ve:
+        logger.warning(f"Error leaving conversation {conversation_id} from user {user_id}: {ve}")
+        return 422, {"error": f"Validation error: {ve}"}
+    except Exception as e:
+        logger.error(f"Error leaving conversation {conversation_id} from user {user_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.delete("chat/{conversation_id}/", response={200: SuccessResponse, 500: ErrorResponse})
+def delete_conversation(request, conversation_id: str):
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        logger.info(f"Received request to delete conversation {conversation_id}.")
+        registry.delete_conversation(user_id=user_id, conversation_id=conversation_id)
+        logger.info(f"Conversation {conversation_id} deleted.")
+        return 200, SuccessResponse(
+            message="Conversation deleted successfully",
+            data={"conversation_id": conversation_id},
+        )
+    except Exception as e:
+        logger.error(f"Error deleting conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}

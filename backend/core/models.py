@@ -43,3 +43,4 @@ class Conversation(BaseModel):
     name: str
     is_locked: bool
     is_visible: bool
+    admin_id: str
