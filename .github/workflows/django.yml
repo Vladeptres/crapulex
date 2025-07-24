@@ -8,20 +8,28 @@ env:
 
 
 jobs:
-  container-job:
-    # Containers must run in Linux based operating systems
-    runs-on: ubuntu-latest
-    container: node:20-bookworm-slim
+  build:
 
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.11]
+        
     services:
+      # Label used to access the service container
       redis:
+        # Docker Hub image
         image: redis
+        # Set health checks to wait until redis has started
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
     steps:
     - uses: actions/checkout@v4
     - name: Setup environment
