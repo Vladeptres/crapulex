@@ -8,13 +8,19 @@ env:
 
 
 jobs:
-  build:
-
+  container-job:
+    # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.11]
+    container: node:20-bookworm-slim
+
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v4
