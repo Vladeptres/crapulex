@@ -21,25 +21,22 @@ cd bourracho
 
 ### 2. Backend Setup
 
-Navigate to the backend directory and set up the Django environment:
+Navigate to the backend directory and set up the python environment:
 
 ```bash
 cd backend
 
 # Install dependencies using uv
 uv sync
-
-# Run database migrations
-uv run manage.py migrate
-
-# Create a superuser (optional)
-uv run manage.py createsuperuser
-
-# Start the development server
-uv run manage.py runserver
 ```
 
-The Django backend will be available at `http://localhost:8000`
+# Install Mongo DB
+Follow instructions [here](https://www.mongodb.com/docs/manual/installation/)
+
+# Install redis
+```bash
+docker run -p 6379:6379 -it redis:latest
+```
 
 ### 3. Frontend Setup
 
@@ -63,6 +60,15 @@ The React frontend will be available at `http://localhost:5173`
 
 ```bash
 cd backend
+
+# Install dependencies using uv
+uv sync
+
+# Launch as redis docker service
+docker run -p 6379:6379 -it redis:latest
+
+# Launch a mongo DB docker service
+sudo systemctl start mongod
 
 # Run the development server
 uv run manage.py runserver
@@ -112,11 +118,11 @@ npm run format:check
 
 ```text
 bourracho/
-├── backend/                 # Django backend
-│   ├── bourracho/          # Main Django app
-│   ├── conversations_api/  # Conversations API
-│   ├── manage.py           # Django management script
-│   └── requirements.txt    # Python dependencies
+├── backend/                # Django ninja backend
+│   ├── core/               # Python library performing the data store and retrieval
+│   ├── api/                # Django ninja API
+│   ├── tests/              # Python tests
+│   └── pyproject.toml      # Python configuration (project info, dependencies, configuration)
 ├── frontend/               # React frontend
 │   ├── src/
 │   │   ├── components/     # React components

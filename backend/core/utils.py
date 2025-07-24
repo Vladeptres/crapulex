@@ -1,3 +1,6 @@
+from datetime import datetime
+
+import pytz
 from loguru import logger
 from pymongo import MongoClient
 
@@ -11,3 +14,7 @@ def check_db_connection():
         logger.success("Connection to Mongo DB OK.")
     except Exception as e:
         raise ValueError(f"Failed to connect to MongoDB: {e}") from e
+
+
+def now_paris() -> datetime:
+    return pytz.timezone("Europe/Paris").localize(datetime.now())  # noqa: DTZ005

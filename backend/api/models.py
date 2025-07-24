@@ -2,8 +2,6 @@ from datetime import datetime
 from typing import Literal
 from pydantic import Field, BaseModel
 
-from core.models import React
-
 
 # Request Models (for incoming data)
 class UserCredentials(BaseModel):
@@ -33,18 +31,16 @@ class ConversationUpdate(BaseModel):
     is_visible: bool = None
     admin_id: str = None
 
+class ReactPost(BaseModel):
+    """Schema for posting reactions"""
+    emoji: str
+    issuer_id: str
 
 class MessageUpdate(BaseModel):
     """Schema for updating messages"""
     id: str
     content: str = None
-    reacts: list[React] = None
-
-
-class ReactPost(BaseModel):
-    """Schema for posting reactions"""
-    emoji: str
-    issuer_id: str
+    reacts: list[ReactPost] = None
 
 
 # Response Models (for outgoing data)
