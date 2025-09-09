@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from channels.testing import WebsocketCommunicator
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from pydantic import ValidationError
 from pymongo import MongoClient
 
@@ -14,6 +14,13 @@ from core.config import MONGO_DB_URL
 from core.websocket.consumers import ChatConsumer
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "api.settings"
+
+# Mock Redis configuration for tests
+TEST_CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 
 class TestChatConsumer(TestCase):

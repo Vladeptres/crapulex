@@ -25,10 +25,10 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 CORS_ALLOW_HEADERS = [
-    "*"
+    "*",
 ]
 
 CORS_ALLOW_METHODS = [
@@ -46,9 +46,6 @@ if CORS_ORIGINS_ENV:
     CORS_ALLOWED_ORIGINS = CORS_ORIGINS_ENV.split(",")
 else:
     CORS_ALLOWED_ORIGINS = [
-        "https://bourracho.vercel.app",
-        "https://bourracho-production.up.railway.app",
-        "http://localhost:3000",
         "http://localhost:5173",
     ]
 
@@ -62,7 +59,7 @@ CORS_PREFLIGHT_MAX_AGE = 86400
 # Additional CORS settings for preflight requests
 CORS_URLS_REGEX = r"^.*$"  # Apply CORS to all URLs
 
-ALLOWED_HOSTS = ["*", ".railway.app", ".vercel.app"]
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
 # Application definition
@@ -168,11 +165,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # CORS settings for production and development
+# Redis configuration for Django Channels
+from core.config import REDIS_URL
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [REDIS_URL],
         },
     },
 }

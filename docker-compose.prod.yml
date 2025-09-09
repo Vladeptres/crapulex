@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: bourracho-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    # Remove port exposure - only accessible internally
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - bourracho-internal
+    # Add MongoDB security configuration
+    command: mongod --auth --bind_ip_all
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: bourracho-redis
+    restart: unless-stopped
+    # Remove port exposure - only accessible internally
+    volumes:
+      - redis_data:/data
+    networks:
+      - bourracho-internal
+    # Add Redis password authentication
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bourracho-backend
+    restart: unless-stopped
+    # Remove port exposure - only accessible via nginx
+    environment:
+      # Django settings
+      DJANGO_SETTINGS_MODULE: api.settings
+      BOURRACHO_SECRET_KEY: ${BOURRACHO_SECRET_KEY}
+      DEBUG: false
+      
+      # MongoDB configuration
+      MONGO_DB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017
+      MONGO_DB_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_DB_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      
+      # Redis configuration with password
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      
+      # Media storage
+      MEDIA_STORAGE_PATH: /app/media_files
+      
+      # Security settings
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      # CORS settings
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://bourracho.vercel.app}
+      
+      # AWS S3 settings (optional)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      - media_files:/app/media_files
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - bourracho-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: bourracho-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - media_files:/var/www/media:ro
+    depends_on:
+      - backend
+    networks:
+      - bourracho-internal
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: bourracho-certbot
+    restart: "no"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+  media_files:
+    driver: local
+
+networks:
+  bourracho-internal:
+    driver: bridge
+    internal: false

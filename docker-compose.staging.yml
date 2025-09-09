@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  mongodb-staging:
+    image: mongo:7.0
+    container_name: bourracho-mongodb-staging
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    # No port exposure - only accessible internally
+    volumes:
+      - mongodb_staging_data:/data/db
+      - mongodb_staging_config:/data/configdb
+    networks:
+      - bourracho-staging-network
+    command: mongod --auth --bind_ip_all
+
+  redis-staging:
+    image: redis:7.2-alpine
+    container_name: bourracho-redis-staging
+    restart: unless-stopped
+    # No port exposure - only accessible internally
+    volumes:
+      - redis_staging_data:/data
+    networks:
+      - bourracho-staging-network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+
+  backend-staging:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bourracho-backend-staging
+    restart: unless-stopped
+    # No port exposure - only accessible via nginx
+    environment:
+      # Django settings
+      DJANGO_SETTINGS_MODULE: api.settings
+      BOURRACHO_SECRET_KEY: ${BOURRACHO_SECRET_KEY}
+      DEBUG: false
+      
+      # MongoDB configuration
+      MONGO_DB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb-staging:27017
+      MONGO_DB_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_DB_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      
+      # Redis configuration with password
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis-staging:6379/0
+      
+      # Media storage
+      MEDIA_STORAGE_PATH: /app/media_files
+      
+      # Security settings
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://staging-bourracho.vercel.app}
+      
+      # AWS S3 settings (optional)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      - media_staging_files:/app/media_files
+    depends_on:
+      - mongodb-staging
+      - redis-staging
+    networks:
+      - bourracho-staging-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx-staging:
+    image: nginx:1.25-alpine
+    container_name: bourracho-nginx-staging
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/staging.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/staging/conf:/etc/letsencrypt:ro
+      - ./certbot/staging/www:/var/www/certbot:ro
+      - media_staging_files:/var/www/media:ro
+    depends_on:
+      - backend-staging
+    networks:
+      - bourracho-staging-network
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot-staging:
+    image: certbot/certbot:latest
+    container_name: bourracho-certbot-staging
+    restart: "no"
+    volumes:
+      - ./certbot/staging/conf:/etc/letsencrypt
+      - ./certbot/staging/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  mongodb_staging_data:
+    driver: local
+  mongodb_staging_config:
+    driver: local
+  redis_staging_data:
+    driver: local
+  media_staging_files:
+    driver: local
+
+networks:
+  bourracho-staging-network:
+    driver: bridge

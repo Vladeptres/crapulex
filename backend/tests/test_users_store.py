@@ -5,7 +5,9 @@ import pytest
 from core.models import User
 from core.users_store import UsersStore
 
-MONGO_TEST_DB = "bourracho_test"
+from core.config import MONGO_DB_NAME
+
+MONGO_TEST_DB = MONGO_DB_NAME
 
 
 @pytest.fixture

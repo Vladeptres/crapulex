@@ -11,7 +11,9 @@ from pymongo import MongoClient
 from api.models import ConversationCreate, ConversationUpdate, MessagePost, ReactPost, ReactResponse, UserCredentials
 from core.stores_registry import StoresRegistry
 
-MONGO_URL = os.environ.get("MONGO_DB_URL", "mongodb://localhost:27017/")
+from core.config import MONGO_DB_URL
+
+MONGO_URL = MONGO_DB_URL
 
 
 def random_db_name():

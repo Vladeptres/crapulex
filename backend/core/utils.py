@@ -9,6 +9,7 @@ from core import config
 
 def check_db_connection():
     try:
+        logger.info("Checking connection to Mongo DB...")
         client = MongoClient(config.MONGO_DB_URL)
         client.server_info()
         logger.success("Connection to Mongo DB OK.")

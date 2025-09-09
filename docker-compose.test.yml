@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  mongodb-test:
+    image: mongo:7.0
+    container_name: bourracho-mongodb-test
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-test_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-test_password_123}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-bourracho_test}
+    ports:
+      - "27018:27017"  # Different port to avoid conflicts
+    volumes:
+      - mongodb_test_data:/data/db
+      - mongodb_test_config:/data/configdb
+    networks:
+      - bourracho-test-network
+    command: mongod --auth --bind_ip_all
+
+  redis-test:
+    image: redis:7.2-alpine
+    container_name: bourracho-redis-test
+    restart: unless-stopped
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    volumes:
+      - redis_test_data:/data
+    networks:
+      - bourracho-test-network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-test_redis_pass}
+
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bourracho-backend-test
+    restart: unless-stopped
+    ports:
+      - "8001:8000"  # Different port to avoid conflicts
+    environment:
+      # Django settings
+      DJANGO_SETTINGS_MODULE: api.settings
+      BOURRACHO_SECRET_KEY: ${BOURRACHO_SECRET_KEY:-test-secret-key-not-for-production}
+      DEBUG: ${DEBUG:-false}
+      
+      # MongoDB configuration
+      MONGO_DB_URL: mongodb://${MONGO_ROOT_USERNAME:-test_admin}:${MONGO_ROOT_PASSWORD:-test_password_123}@mongodb-test:27017
+      MONGO_DB_USERNAME: ${MONGO_ROOT_USERNAME:-test_admin}
+      MONGO_DB_PASSWORD: ${MONGO_ROOT_PASSWORD:-test_password_123}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-bourracho_test}
+      
+      # Redis configuration
+      REDIS_URL: redis://:${REDIS_PASSWORD:-test_redis_pass}@redis-test:6379/0
+      
+      # Media storage
+      MEDIA_STORAGE_PATH: /app/media_files
+      
+      # Security settings
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,test.yourdomain.com}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://test-bourracho.vercel.app,http://localhost:3000}
+      
+      # AWS S3 settings (optional)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      - media_test_files:/app/media_files
+    depends_on:
+      - mongodb-test
+      - redis-test
+    networks:
+      - bourracho-test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mongodb_test_data:
+    driver: local
+  mongodb_test_config:
+    driver: local
+  redis_test_data:
+    driver: local
+  media_test_files:
+    driver: local
+
+networks:
+  bourracho-test-network:
+    driver: bridge

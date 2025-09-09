@@ -5,7 +5,9 @@ import pytest
 from core.messages_store import MessagesStore
 from core.models import Message, React
 
-MONGO_TEST_DB = "bourracho_test"
+from core.config import MONGO_DB_NAME
+
+MONGO_TEST_DB = MONGO_DB_NAME
 
 
 @pytest.fixture
