@@ -11,3 +11,6 @@
 
 ## Node
 node_modules
+
+# Production secret
+*.prod*
