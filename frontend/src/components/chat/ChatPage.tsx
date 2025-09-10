@@ -8,11 +8,14 @@ import type {
   ConversationResponse,
   MessagePost,
   MessageResponse,
+  MessageUpdate,
+  ReactPost,
 } from '@/api/generated'
 import {
   apiApiGetMessages,
   apiApiPostMessage,
   apiApiGetUsers,
+  apiApiPatchMessage,
 } from '@/api/generated'
 import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -304,6 +307,57 @@ export default function ChatPage({
     }
   }
 
+  const handleReaction = async (messageId: string, emoji: string) => {
+    if (conversation.is_locked) {
+      showToast.error('Cannot react', 'Conversation is locked.')
+      return
+    }
+
+    try {
+      const reactPost: ReactPost = {
+        emoji,
+        issuer_id: user.id,
+      }
+
+      const messageUpdate: MessageUpdate = {
+        id: messageId,
+        reacts: [reactPost],
+      }
+
+      const response = await apiApiPatchMessage({
+        path: {
+          conversation_id: conversation.id || '',
+        },
+        body: messageUpdate,
+        headers: {
+          'User-Id': user.id,
+        },
+      })
+
+      if (response.data) {
+        // Update the message in the local state
+        setMessages(prev =>
+          prev.map(msg => (msg.id === messageId ? response.data : msg))
+        )
+      }
+    } catch (error) {
+      console.error('Failed to add reaction:', error)
+      showToast.error('Failed to add reaction', 'Please try again.')
+    }
+  }
+
+  const getReactionCount = (message: MessageResponse, emoji: string) => {
+    return message.reacts?.filter(react => react.emoji === emoji).length || 0
+  }
+
+  const hasUserReacted = (message: MessageResponse, emoji: string) => {
+    return (
+      message.reacts?.some(
+        react => react.emoji === emoji && react.issuer_id === user.id
+      ) || false
+    )
+  }
+
   return (
     <div className="flex flex-col h-full relative">
       {/* Fun Background - only show when conversation is visible */}
@@ -388,7 +442,7 @@ export default function ChatPage({
           groupMessages(messages).map((group, groupIndex) => (
             <div
               key={`${group.userId}-${group.timestamp}`}
-              className={`flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
+              className={`group flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
             >
               <div
                 className={`flex items-end gap-2 ${group.userId === user.id ? 'flex-row-reverse' : 'flex-row'}`}
@@ -418,7 +472,7 @@ export default function ChatPage({
                   {group.messages.map(message => (
                     <div
                       key={message.id}
-                      className={`flex ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                      className={`flex flex-col ${group.userId === user.id ? 'items-end' : 'items-start'}`}
                     >
                       <div
                         className={`rounded-lg px-4 py-2 ${
@@ -438,6 +492,54 @@ export default function ChatPage({
                           )}
                         </div>
                       </div>
+
+                      {/* Reactions */}
+                      {message.reacts && message.reacts.length > 0 && (
+                        <div
+                          className={`flex flex-wrap gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                        >
+                          {Array.from(
+                            new Set(message.reacts.map(r => r.emoji))
+                          ).map(emoji => {
+                            const count = getReactionCount(message, emoji)
+                            const userReacted = hasUserReacted(message, emoji)
+                            return (
+                              <button
+                                key={emoji}
+                                onClick={() =>
+                                  handleReaction(message.id, emoji)
+                                }
+                                disabled={conversation.is_locked}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
+                                  userReacted
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted hover:bg-muted/80'
+                                } ${conversation.is_locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                              >
+                                <span>{emoji}</span>
+                                <span>{count}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Add Reaction Button */}
+                      {!conversation.is_locked && (
+                        <div
+                          className={`flex gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                        >
+                          {['👍', '❤️', '😂', '😮', '😢', '😡'].map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={() => handleReaction(message.id, emoji)}
+                              className="opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-muted text-sm"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
