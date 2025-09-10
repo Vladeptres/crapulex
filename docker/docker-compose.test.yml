@@ -6,9 +6,9 @@ services:
     container_name: bourracho-mongodb-test
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-test_admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-test_password_123}
-      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-bourracho_test}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
     ports:
       - "27018:27017"  # Different port to avoid conflicts
     volumes:
@@ -23,12 +23,12 @@ services:
     container_name: bourracho-redis-test
     restart: unless-stopped
     ports:
-      - "6380:6379"  # Different port to avoid conflicts
+      - "${REDIS_PORT:-6380}:6379"  # Different port to avoid conflicts
     volumes:
       - redis_test_data:/data
     networks:
       - bourracho-test-network
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-test_redis_pass}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
 
   backend-test:
     build:
@@ -41,29 +41,33 @@ services:
     environment:
       # Django settings
       DJANGO_SETTINGS_MODULE: api.settings
-      BOURRACHO_SECRET_KEY: ${BOURRACHO_SECRET_KEY:-test-secret-key-not-for-production}
-      DEBUG: ${DEBUG:-false}
+      BOURRACHO_SECRET_KEY: ${BOURRACHO_SECRET_KEY}
+      DEBUG: ${DEBUG}
       
-      # MongoDB configuration
-      MONGO_DB_URL: mongodb://${MONGO_ROOT_USERNAME:-test_admin}:${MONGO_ROOT_PASSWORD:-test_password_123}@mongodb-test:27017
-      MONGO_DB_USERNAME: ${MONGO_ROOT_USERNAME:-test_admin}
-      MONGO_DB_PASSWORD: ${MONGO_ROOT_PASSWORD:-test_password_123}
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-bourracho_test}
+      # MongoDB configuration - using consistent variable names
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      MONGO_DB_HOST: mongodb-test
+      MONGO_DB_PORT: 27017
       
-      # Redis configuration
-      REDIS_URL: redis://:${REDIS_PASSWORD:-test_redis_pass}@redis-test:6379/0
+      # Redis configuration - using consistent variable names
+      REDIS_HOST: redis-test
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
       
       # Media storage
       MEDIA_STORAGE_PATH: /app/media_files
       
       # Security settings
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,test.yourdomain.com}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://test-bourracho.vercel.app,http://localhost:3000}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       
       # AWS S3 settings (optional)
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
     volumes:
       - media_test_files:/app/media_files
     depends_on:

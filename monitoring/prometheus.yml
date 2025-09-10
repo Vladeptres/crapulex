@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'bourracho-backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/api/monitoring/metrics/prometheus/'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  - job_name: 'bourracho-health'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/api/monitoring/health/detailed/'
+    scrape_interval: 60s
+    scrape_timeout: 10s
+
+  # MongoDB metrics (if you add mongodb_exporter later)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+
+  # Redis metrics (if you add redis_exporter later)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # Node exporter for system metrics (if you add it later)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']

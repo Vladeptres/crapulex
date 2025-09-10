@@ -20,8 +20,20 @@ from django.contrib import admin
 from django.urls import path
 
 from api.api import api
+from api.monitoring_views import (
+    health_check,
+    health_detailed,
+    metrics_json,
+    metrics_prometheus,
+    monitoring_dashboard
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/monitoring/", monitoring_dashboard, name="monitoring_dashboard"),
+    path("api/monitoring/health/", health_check, name="health_check"),
+    path("api/monitoring/health/detailed/", health_detailed, name="health_detailed"),
+    path("api/monitoring/metrics/", metrics_json, name="metrics_json"),
+    path("api/monitoring/metrics/prometheus/", metrics_prometheus, name="metrics_prometheus"),
     path("api/", api.urls),
 ]

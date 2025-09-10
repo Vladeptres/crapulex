@@ -1,4 +1,6 @@
 import os
+import redis
+from pymongo import MongoClient
 
 # MongoDB Configuration - using consistent variable names
 
@@ -37,3 +39,19 @@ S3_REGION = os.environ.get("S3_REGION", "eu-north-1")
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "https://s3.eu-north-1.amazonaws.com")
 S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
+
+
+def get_redis_client():
+    """Get Redis client instance."""
+    return redis.Redis(
+        host=REDIS_HOST,
+        port=int(REDIS_PORT),
+        password=REDIS_PASSWORD if REDIS_PASSWORD else None,
+        db=int(REDIS_DB),
+        decode_responses=True
+    )
+
+
+def get_mongo_client():
+    """Get MongoDB client instance."""
+    return MongoClient(MONGO_DB_URL)
