@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { apiApiRegisterUser } from '@/api/generated'
-import type { UserPayload } from '@/api/generated'
+import type { UserCredentials } from '@/api/generated'
 
 interface SignupFormData {
   email: string
@@ -79,7 +79,7 @@ export default function SignupForm({
     setError(null)
 
     try {
-      const payload: UserPayload = {
+      const payload: UserCredentials = {
         username: formData.email, // Pass email as username to backend
         password: formData.password,
       }

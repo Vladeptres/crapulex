@@ -3,7 +3,12 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
 import { showToast } from '@/lib/toast'
-import type { UserResponse, Message, Conversation } from '@/api/generated'
+import type {
+  UserResponse,
+  ConversationResponse,
+  MessagePost,
+  MessageResponse,
+} from '@/api/generated'
 import {
   apiApiGetMessages,
   apiApiPostMessage,
@@ -14,11 +19,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import FunBackground from '@/components/ui/fun-background'
 
 interface ChatPageProps {
-  conversation: Conversation
+  conversation: ConversationResponse
   user: UserResponse
   onSendMessage?: (message: string) => void
   onBackToHome: () => void
-  messages?: Message[]
+  messages?: MessageResponse[]
   autoScroll?: boolean
 }
 
@@ -32,7 +37,7 @@ export default function ChatPage({
 }: ChatPageProps) {
   const [messageInput, setMessageInput] = useState('')
   const [copied, setCopied] = useState(false)
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [messages, setMessages] = useState<MessageResponse[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [users, setUsers] = useState<Record<string, UserResponse>>({})
@@ -180,7 +185,7 @@ export default function ChatPage({
     if (messageInput.trim() && !isSending) {
       setIsSending(true)
       try {
-        const messageData: Message = {
+        const messageData: MessagePost = {
           content: messageInput.trim(),
           conversation_id: conversation.id || '',
           issuer_id: user.id,
@@ -190,7 +195,7 @@ export default function ChatPage({
           path: {
             conversation_id: conversation.id || '',
           },
-          body: messageData,
+          body: { message: messageData },
           headers: {
             'User-Id': user.id,
           },
@@ -236,10 +241,10 @@ export default function ChatPage({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const groupMessages = (messages: Message[]) => {
+  const groupMessages = (messages: MessageResponse[]) => {
     const groups: Array<{
       userId: string
-      messages: Message[]
+      messages: MessageResponse[]
       timestamp: string
     }> = []
 

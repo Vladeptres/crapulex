@@ -14,11 +14,15 @@ import {
 import { showToast } from '@/lib/toast'
 import { Copy, Check, MessageCircle } from 'lucide-react'
 import { apiApiCreateConversation } from '@/api/generated'
-import type { UserResponse, Conversation } from '@/api/generated'
+import type {
+  UserResponse,
+  ConversationResponse,
+  ConversationCreate,
+} from '@/api/generated'
 
 interface NewChatModalProps {
   user: UserResponse
-  onJoinChat?: (conversation: Conversation) => void
+  onJoinChat?: (conversation: ConversationResponse) => void
   onConversationCreated?: () => void
 }
 
@@ -30,7 +34,9 @@ export default function NewChatModal({
   const [conversationName, setConversationName] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [conversation, setConversation] = useState<Conversation | null>(null)
+  const [conversation, setConversation] = useState<ConversationResponse | null>(
+    null
+  )
   const [copied, setCopied] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +44,7 @@ export default function NewChatModal({
     if (conversationName.trim()) {
       setIsLoading(true)
       try {
-        const conversationData: Conversation = {
+        const conversationData: ConversationCreate = {
           name: conversationName.trim(),
           is_locked: false,
           is_visible: false,

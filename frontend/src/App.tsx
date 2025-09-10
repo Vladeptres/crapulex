@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 import { client } from '@/api/generated/client.gen'
-import type { Conversation, UserResponse } from '@/api/generated'
+import type { ConversationResponse, UserResponse } from '@/api/generated'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
@@ -19,7 +19,7 @@ function App() {
   const { user, login, logout, isLoading } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
   const [currentConversation, setCurrentConversation] =
-    useState<Conversation | null>(null)
+    useState<ConversationResponse | null>(null)
 
   // Show login dialog if user is not authenticated and not loading
   useEffect(() => {
@@ -39,7 +39,7 @@ function App() {
     setCurrentConversation(null)
   }
 
-  const handleJoinChat = (conversation: Conversation) => {
+  const handleJoinChat = (conversation: ConversationResponse) => {
     // For joining, we don't have the name yet, so we'll use a placeholder
     // In a real app, you'd fetch the conversation details from the API
     setCurrentConversation(conversation)

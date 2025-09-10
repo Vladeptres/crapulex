@@ -13,11 +13,11 @@ import {
 } from '@/components/ui/dialog'
 import { apiApiJoinConversation } from '@/api/generated'
 import { showToast } from '@/lib/toast'
-import type { Conversation, UserResponse } from '@/api/generated'
+import type { ConversationResponse, UserResponse } from '@/api/generated'
 
 interface JoinChatModalProps {
   user: UserResponse
-  onJoinChat: (conversation: Conversation) => void
+  onJoinChat: (conversation: ConversationResponse) => void
   onConversationJoined?: () => void
 }
 

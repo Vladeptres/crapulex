@@ -2,6 +2,7 @@
 
 /**
  * UserResponse
+ * Schema for user data in responses
  */
 export type UserResponse = {
   /**
@@ -24,6 +25,7 @@ export type UserResponse = {
 
 /**
  * ErrorResponse
+ * Standard error response schema
  */
 export type ErrorResponse = {
   /**
@@ -33,9 +35,10 @@ export type ErrorResponse = {
 }
 
 /**
- * UserPayload
+ * UserCredentials
+ * Schema for user registration and login requests
  */
-export type UserPayload = {
+export type UserCredentials = {
   /**
    * Username
    */
@@ -47,17 +50,41 @@ export type UserPayload = {
 }
 
 /**
- * Conversation
+ * ConversationResponse
+ * Schema for conversation data in responses
  */
-export type Conversation = {
+export type ConversationResponse = {
   /**
    * Id
    */
-  id?: string
+  id: string
   /**
    * Users Ids
    */
-  users_ids?: Array<string>
+  users_ids: Array<string>
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Is Locked
+   */
+  is_locked: boolean
+  /**
+   * Is Visible
+   */
+  is_visible: boolean
+  /**
+   * Admin Id
+   */
+  admin_id: string
+}
+
+/**
+ * ConversationCreate
+ * Schema for creating new conversations
+ */
+export type ConversationCreate = {
   /**
    * Name
    */
@@ -73,13 +100,45 @@ export type Conversation = {
 }
 
 /**
- * Message
+ * MediaMetadataResponse
+ * Schema for media metadata in responses
  */
-export type Message = {
+export type MediaMetadataResponse = {
   /**
    * Id
    */
-  id?: string
+  id: string
+  /**
+   * Size
+   */
+  size: number | number
+  /**
+   * Type
+   */
+  type: 'image' | 'video' | 'audio'
+  /**
+   * Issuer Id
+   */
+  issuer_id: string
+  /**
+   * Timestamp
+   */
+  timestamp: string
+  /**
+   * Presigned Url
+   */
+  presigned_url: string
+}
+
+/**
+ * MessageResponse
+ * Schema for message data in responses
+ */
+export type MessageResponse = {
+  /**
+   * Id
+   */
+  id: string
   /**
    * Content
    */
@@ -95,17 +154,22 @@ export type Message = {
   /**
    * Timestamp
    */
-  timestamp?: string
+  timestamp: string
   /**
    * Reacts
    */
-  reacts?: Array<React>
+  reacts?: Array<ReactResponse>
+  /**
+   * Medias Metadatas
+   */
+  medias_metadatas?: Array<MediaMetadataResponse>
 }
 
 /**
- * React
+ * ReactResponse
+ * Schema for reactions in responses
  */
-export type React = {
+export type ReactResponse = {
   /**
    * Emoji
    */
@@ -113,11 +177,104 @@ export type React = {
   /**
    * Issuer Id
    */
-  issuer_id?: string | null
+  issuer_id: string
+}
+
+/**
+ * MessagePost
+ * Schema for posting new messages
+ */
+export type MessagePost = {
+  /**
+   * Content
+   */
+  content: string
+  /**
+   * Issuer Id
+   */
+  issuer_id: string
+  /**
+   * Conversation Id
+   */
+  conversation_id: string
+}
+
+/**
+ * ConversationUpdate
+ * Schema for updating conversation metadata
+ */
+export type ConversationUpdate = {
+  /**
+   * Name
+   */
+  name?: string
+  /**
+   * Is Locked
+   */
+  is_locked?: boolean
+  /**
+   * Is Visible
+   */
+  is_visible?: boolean
+  /**
+   * Admin Id
+   */
+  admin_id?: string
+}
+
+/**
+ * MessageUpdate
+ * Schema for updating messages
+ */
+export type MessageUpdate = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Content
+   */
+  content?: string
+  /**
+   * Reacts
+   */
+  reacts?: Array<ReactPost>
+}
+
+/**
+ * ReactPost
+ * Schema for posting reactions
+ */
+export type ReactPost = {
+  /**
+   * Emoji
+   */
+  emoji: string
+  /**
+   * Issuer Id
+   */
+  issuer_id: string
+}
+
+/**
+ * SuccessResponse
+ * Generic success response schema
+ */
+export type SuccessResponse = {
+  /**
+   * Message
+   */
+  message: string
+  /**
+   * Data
+   */
+  data?: {
+    [key: string]: unknown
+  } | null
 }
 
 export type ApiApiRegisterUserData = {
-  body: UserPayload
+  body: UserCredentials
   path?: never
   query?: never
   url: '/api/register/'
@@ -148,7 +305,7 @@ export type ApiApiRegisterUserResponse =
   ApiApiRegisterUserResponses[keyof ApiApiRegisterUserResponses]
 
 export type ApiApiLoginData = {
-  body: UserPayload
+  body: UserCredentials
   path?: never
   query?: never
   url: '/api/login/'
@@ -177,36 +334,36 @@ export type ApiApiLoginResponses = {
 export type ApiApiLoginResponse =
   ApiApiLoginResponses[keyof ApiApiLoginResponses]
 
-export type ApiApiListConversationsData = {
+export type ApiApiGetConversationsData = {
   body?: never
   path?: never
   query?: never
   url: '/api/chat/'
 }
 
-export type ApiApiListConversationsErrors = {
+export type ApiApiGetConversationsErrors = {
   /**
    * Internal Server Error
    */
   500: ErrorResponse
 }
 
-export type ApiApiListConversationsError =
-  ApiApiListConversationsErrors[keyof ApiApiListConversationsErrors]
+export type ApiApiGetConversationsError =
+  ApiApiGetConversationsErrors[keyof ApiApiGetConversationsErrors]
 
-export type ApiApiListConversationsResponses = {
+export type ApiApiGetConversationsResponses = {
   /**
    * Response
    * OK
    */
-  200: Array<Conversation>
+  200: Array<ConversationResponse>
 }
 
-export type ApiApiListConversationsResponse =
-  ApiApiListConversationsResponses[keyof ApiApiListConversationsResponses]
+export type ApiApiGetConversationsResponse =
+  ApiApiGetConversationsResponses[keyof ApiApiGetConversationsResponses]
 
 export type ApiApiCreateConversationData = {
-  body: Conversation
+  body: ConversationCreate
   path?: never
   query?: never
   url: '/api/chat/'
@@ -230,7 +387,7 @@ export type ApiApiCreateConversationResponses = {
   /**
    * OK
    */
-  200: Conversation
+  200: ConversationResponse
 }
 
 export type ApiApiCreateConversationResponse =
@@ -262,7 +419,7 @@ export type ApiApiJoinConversationResponses = {
   /**
    * OK
    */
-  200: Conversation
+  200: ConversationResponse
 }
 
 export type ApiApiJoinConversationResponse =
@@ -295,14 +452,23 @@ export type ApiApiGetMessagesResponses = {
    * Response
    * OK
    */
-  200: Array<Message>
+  200: Array<MessageResponse>
 }
 
 export type ApiApiGetMessagesResponse =
   ApiApiGetMessagesResponses[keyof ApiApiGetMessagesResponses]
 
 export type ApiApiPostMessageData = {
-  body: Message
+  /**
+   * MultiPartBodyParams
+   */
+  body: {
+    /**
+     * Medias
+     */
+    medias?: Array<Blob | File> | null
+    message: MessagePost
+  }
   path: {
     /**
      * Conversation Id
@@ -331,7 +497,7 @@ export type ApiApiPostMessageResponses = {
   /**
    * OK
    */
-  200: Message
+  200: MessageResponse
 }
 
 export type ApiApiPostMessageResponse =
@@ -363,14 +529,14 @@ export type ApiApiGetConversationResponses = {
   /**
    * OK
    */
-  200: Conversation
+  200: ConversationResponse
 }
 
 export type ApiApiGetConversationResponse =
   ApiApiGetConversationResponses[keyof ApiApiGetConversationResponses]
 
 export type ApiApiPatchConversationData = {
-  body: Conversation
+  body: ConversationUpdate
   path: {
     /**
      * Conversation Id
@@ -399,7 +565,7 @@ export type ApiApiPatchConversationResponses = {
   /**
    * OK
    */
-  200: Conversation
+  200: ConversationResponse
 }
 
 export type ApiApiPatchConversationResponse =
@@ -434,7 +600,7 @@ export type ApiApiGetUsersResponse =
   ApiApiGetUsersResponses[keyof ApiApiGetUsersResponses]
 
 export type ApiApiPatchMessageData = {
-  body: Message
+  body: MessageUpdate
   path: {
     /**
      * Conversation Id
@@ -457,16 +623,81 @@ export type ApiApiPatchMessageError =
 
 export type ApiApiPatchMessageResponses = {
   /**
-   * Response
    * OK
    */
-  200: {
-    [key: string]: unknown
-  }
+  200: MessageResponse
 }
 
 export type ApiApiPatchMessageResponse =
   ApiApiPatchMessageResponses[keyof ApiApiPatchMessageResponses]
+
+export type ApiApiLeaveConversationData = {
+  body?: never
+  path: {
+    /**
+     * Conversation Id
+     */
+    conversation_id: string
+  }
+  query?: never
+  url: '/api/chat/{conversation_id}/leave'
+}
+
+export type ApiApiLeaveConversationErrors = {
+  /**
+   * Unprocessable Entity
+   */
+  422: ErrorResponse
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse
+}
+
+export type ApiApiLeaveConversationError =
+  ApiApiLeaveConversationErrors[keyof ApiApiLeaveConversationErrors]
+
+export type ApiApiLeaveConversationResponses = {
+  /**
+   * OK
+   */
+  200: ConversationResponse
+}
+
+export type ApiApiLeaveConversationResponse =
+  ApiApiLeaveConversationResponses[keyof ApiApiLeaveConversationResponses]
+
+export type ApiApiDeleteConversationData = {
+  body?: never
+  path: {
+    /**
+     * Conversation Id
+     */
+    conversation_id: string
+  }
+  query?: never
+  url: '/api/chat/{conversation_id}/'
+}
+
+export type ApiApiDeleteConversationErrors = {
+  /**
+   * Internal Server Error
+   */
+  500: ErrorResponse
+}
+
+export type ApiApiDeleteConversationError =
+  ApiApiDeleteConversationErrors[keyof ApiApiDeleteConversationErrors]
+
+export type ApiApiDeleteConversationResponses = {
+  /**
+   * OK
+   */
+  200: SuccessResponse
+}
+
+export type ApiApiDeleteConversationResponse =
+  ApiApiDeleteConversationResponses[keyof ApiApiDeleteConversationResponses]
 
 export type ClientOptions = {
   baseURL: string

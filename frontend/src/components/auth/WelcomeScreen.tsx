@@ -11,11 +11,11 @@ import {
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 
-import type { UserResponse, Conversation } from '@/api/generated'
+import type { UserResponse, ConversationResponse } from '@/api/generated'
 import {
-  apiApiListConversations,
   apiApiGetUsers,
   apiApiPatchConversation,
+  apiApiGetConversations,
 } from '@/api/generated'
 import AppHeader from '@/components/layout/AppHeader'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ interface WelcomeScreenProps {
   user: UserResponse | null
   onLogin: () => void
   onLogout: () => void
-  onJoinChat?: (conversation: Conversation) => void
+  onJoinChat?: (conversation: ConversationResponse) => void
 }
 
 export default function WelcomeScreen({
@@ -41,7 +41,7 @@ export default function WelcomeScreen({
   onJoinChat,
 }: WelcomeScreenProps) {
   const [users, setUsers] = useState<Record<string, UserResponse>>({})
-  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [conversations, setConversations] = useState<ConversationResponse[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -73,7 +73,7 @@ export default function WelcomeScreen({
 
     setIsLoading(true)
     try {
-      const response = await apiApiListConversations({
+      const response = await apiApiGetConversations({
         headers: {
           'User-Id': user.id,
         },
@@ -100,7 +100,9 @@ export default function WelcomeScreen({
     }
   }, [user])
 
-  const handleUnlockConversation = async (conversation: Conversation) => {
+  const handleUnlockConversation = async (
+    conversation: ConversationResponse
+  ) => {
     if (!user) return
 
     try {
@@ -136,7 +138,7 @@ export default function WelcomeScreen({
     }
   }
 
-  const handleToggleVisibility = async (conversation: Conversation) => {
+  const handleToggleVisibility = async (conversation: ConversationResponse) => {
     if (!user) return
 
     try {
