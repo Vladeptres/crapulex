@@ -102,6 +102,61 @@ source .env.local
 uv run manage.py runserver
 ```
 
+or via Docker (standalone):
+
+```bash
+docker build -f docker/Dockerfile -t bourracho-backend .
+docker run --env-file .env.dev -p 8000:8000 bourracho-backend
+```
+
+or via Docker Compose (recommended - includes MongoDB and Redis):
+
+#### Development Environment
+```bash
+# Start development services (MongoDB on 27017, Redis on 6380, Backend on 8002)
+docker compose --env-file .env.dev -f docker/docker-compose.yml up --build
+
+# Or run in background
+docker compose --env-file .env.dev -f docker/docker-compose.yml up -d --build
+
+# Stop services
+docker compose --env-file .env.dev -f docker/docker-compose.yml down
+
+# View logs
+docker compose --env-file .env.dev -f docker/docker-compose.yml logs -f backend
+```
+
+#### Production Environment
+```bash
+# Start production services (MongoDB on 27017, Redis on 6379, Backend on 8001)
+docker compose --env-file .env.prod -f docker/docker-compose.yml up --build
+
+# Or run in background
+docker compose --env-file .env.prod -f docker/docker-compose.yml up -d --build
+
+# Stop services
+docker compose --env-file .env.prod -f docker/docker-compose.yml down
+
+# View logs
+docker compose --env-file .env.prod -f docker/docker-compose.yml logs -f backend
+```
+
+#### Running Both Environments Simultaneously
+You can run both development and production environments at the same time since they use different ports and container names:
+
+```bash
+# Terminal 1: Start development environment
+docker compose --env-file .env.dev -f docker/docker-compose.yml up -d --build
+
+# Terminal 2: Start production environment  
+docker compose --env-file .env.prod -f docker/docker-compose.yml up -d --build
+
+# Check both are running
+docker ps | grep bourracho
+```
+
+**Important**: Make sure to update the production credentials in `.env.prod` before deploying to production!
+
 ### Backend Testing Guidelines
 
 #### Running Tests

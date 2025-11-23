@@ -1,6 +1,10 @@
 import os
+
 import redis
+from dotenv import load_dotenv
 from pymongo import MongoClient
+
+load_dotenv()
 
 # MongoDB Configuration - using consistent variable names
 
@@ -48,7 +52,7 @@ def get_redis_client():
         port=int(REDIS_PORT),
         password=REDIS_PASSWORD if REDIS_PASSWORD else None,
         db=int(REDIS_DB),
-        decode_responses=True
+        decode_responses=True,
     )
 
 
