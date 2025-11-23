@@ -32,7 +32,16 @@ SECRET_KEY = os.environ.get(
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 CORS_ALLOW_HEADERS = [
-    "*",
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "user-id",
 ]
 
 CORS_ALLOW_METHODS = [
@@ -63,6 +72,7 @@ CORS_PREFLIGHT_MAX_AGE = 86400
 # Additional CORS settings for preflight requests
 CORS_URLS_REGEX = r"^.*$"  # Apply CORS to all URLs
 
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
