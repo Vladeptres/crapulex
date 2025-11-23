@@ -26,7 +26,18 @@ venv/
 ENV/
 env/
 
-# IDE
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# IDEs
 .vscode/
 .idea/
 *.swp
@@ -35,34 +46,42 @@ env/
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite3
+*.db
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
 
 # Git
 .git/
 .gitignore
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# Logs
-*.log
-
-# Database
-*.sqlite3
-db.sqlite3
-
-# Media files (will be mounted as volume)
-media_files/
+# Environment files (will be passed via --env-file)
+.env*
 
 # Documentation
-docs/
-# Keep README.md for pyproject.toml
+*.md
 !README.md
 
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
+# Test files
+tests/
+run_tests.sh
+pytest.ini
+
+# Temporary files
+tmp/
+temp/
