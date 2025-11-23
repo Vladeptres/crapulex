@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from channels.testing import WebsocketCommunicator
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from pydantic import ValidationError
 from pymongo import MongoClient
 

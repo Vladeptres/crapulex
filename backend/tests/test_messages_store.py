@@ -2,10 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.config import MONGO_DB_NAME
 from core.messages_store import MessagesStore
 from core.models import Message, React
-
-from core.config import MONGO_DB_NAME
 
 MONGO_TEST_DB = MONGO_DB_NAME
 

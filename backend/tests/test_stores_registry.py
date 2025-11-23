@@ -1,4 +1,3 @@
-import os
 import random
 import string
 
@@ -9,9 +8,8 @@ from moto import mock_aws
 from pymongo import MongoClient
 
 from api.models import ConversationCreate, ConversationUpdate, MessagePost, ReactPost, ReactResponse, UserCredentials
-from core.stores_registry import StoresRegistry
-
 from core.config import MONGO_DB_URL
+from core.stores_registry import StoresRegistry
 
 MONGO_URL = MONGO_DB_URL
 
