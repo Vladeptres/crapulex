@@ -24,6 +24,11 @@ registry = StoresRegistry(db_name=MONGO_DB_NAME)
 api = NinjaAPI()
 
 
+@api.post("health/", response={200: dict, 500: ErrorResponse})
+def health_check(request):
+    return 200, {"message": "OK"}
+
+
 @api.post("register/", response={200: UserResponse, 401: ErrorResponse, 500: ErrorResponse})
 def register_user(request, user_credentials: UserCredentials):
     logger.info("Received request to register user.")
