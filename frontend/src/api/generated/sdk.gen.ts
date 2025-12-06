@@ -7,6 +7,9 @@ import {
   formDataBodySerializer,
 } from './client'
 import type {
+  ApiApiHealthCheckData,
+  ApiApiHealthCheckResponses,
+  ApiApiHealthCheckErrors,
   ApiApiRegisterUserData,
   ApiApiRegisterUserResponses,
   ApiApiRegisterUserErrors,
@@ -46,6 +49,15 @@ import type {
   ApiApiDeleteConversationData,
   ApiApiDeleteConversationResponses,
   ApiApiDeleteConversationErrors,
+  ApiApiCreateConversationUserData,
+  ApiApiCreateConversationUserResponses,
+  ApiApiCreateConversationUserErrors,
+  ApiApiUpdateConversationUserData,
+  ApiApiUpdateConversationUserResponses,
+  ApiApiUpdateConversationUserErrors,
+  ApiApiGetConversationUsersData,
+  ApiApiGetConversationUsersResponses,
+  ApiApiGetConversationUsersErrors,
 } from './types.gen'
 import { client as _heyApiClient } from './client.gen'
 
@@ -64,6 +76,23 @@ export type Options<
    * used to access values that aren't defined as part of the SDK function.
    */
   meta?: Record<string, unknown>
+}
+
+/**
+ * Health Check
+ */
+export const apiApiHealthCheck = <ThrowOnError extends boolean = true>(
+  options?: Options<ApiApiHealthCheckData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).post<
+    ApiApiHealthCheckResponses,
+    ApiApiHealthCheckErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/health/',
+    ...options,
+  })
 }
 
 /**
@@ -308,6 +337,69 @@ export const apiApiDeleteConversation = <ThrowOnError extends boolean = true>(
   >({
     responseType: 'json',
     url: '/api/chat/{conversation_id}/',
+    ...options,
+  })
+}
+
+/**
+ * Create Conversation User
+ */
+export const apiApiCreateConversationUser = <
+  ThrowOnError extends boolean = true,
+>(
+  options: Options<ApiApiCreateConversationUserData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    ApiApiCreateConversationUserResponses,
+    ApiApiCreateConversationUserErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/chat/{conversation_id}/user',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  })
+}
+
+/**
+ * Update Conversation User
+ */
+export const apiApiUpdateConversationUser = <
+  ThrowOnError extends boolean = true,
+>(
+  options: Options<ApiApiUpdateConversationUserData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    ApiApiUpdateConversationUserResponses,
+    ApiApiUpdateConversationUserErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/chat/{conversation_id}/user/{target_user_id}',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  })
+}
+
+/**
+ * Get Conversation Users
+ */
+export const apiApiGetConversationUsers = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiGetConversationUsersData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ApiApiGetConversationUsersResponses,
+    ApiApiGetConversationUsersErrors,
+    ThrowOnError
+  >({
+    responseType: 'json',
+    url: '/api/chat/{conversation_id}/users',
     ...options,
   })
 }
