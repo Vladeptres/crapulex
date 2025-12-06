@@ -7,8 +7,9 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    command: mongod --bind_ip_all --port ${MONGO_DB_PORT}
     ports:
-      - "${MONGO_DB_PORT}:27017"
+      - "${MONGO_DB_PORT}:${MONGO_DB_PORT}"
     volumes:
       - mongodb_data_${CONTAINER_SUFFIX}:/data/db
     networks:
@@ -40,7 +41,7 @@ services:
       - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
       - MONGO_DB_NAME=${MONGO_DB_NAME}
       - MONGO_DB_HOST=bourracho-mongo-${CONTAINER_SUFFIX}
-      - MONGO_DB_PORT=27017
+      - MONGO_DB_PORT=${MONGO_DB_PORT}
       - BOURRACHO_SECRET_KEY=${BOURRACHO_SECRET_KEY}
       - DEBUG=${DEBUG}
       - REDIS_HOST=bourracho-redis-${CONTAINER_SUFFIX}
