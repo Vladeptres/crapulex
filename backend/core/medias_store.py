@@ -15,15 +15,12 @@ from core.models import MediaMetadata
 class MediasStore:
     """
     MediaStore handles the storage and retrieval of media files (images, videos, audio).
-    Files are stored in a S3 bucket.
+    Files are stored in S3 bucket or local filesystem as fallback.
     """
 
     def __init__(self) -> None:
         """
-        Initialize MediaStore with a base storage path.
-
-        Args:
-            base_path: Base directory for media storage. Defaults to config.MEDIA_STORAGE_PATH
+        Initialize MediaStore with S3 client.
         """
         self.s3_client = client(
             "s3",
@@ -32,6 +29,17 @@ class MediasStore:
             aws_access_key_id=config.S3_ACCESS_KEY_ID,
             aws_secret_access_key=config.S3_SECRET_ACCESS_KEY,
         )
+
+        # Test S3 connection by checking if bucket exists
+        try:
+            self.s3_client.head_bucket(Bucket=config.S3_BUCKET_NAME)
+            logger.info(f"S3 storage initialized with bucket: {config.S3_BUCKET_NAME}")
+        except Exception as e:
+            logger.error(f"S3 initialization failed: {e}")
+            logger.error(
+                f"S3 Config - Bucket: {config.S3_BUCKET_NAME}, Region: {config.S3_REGION}, Endpoint: {config.S3_ENDPOINT_URL}",
+            )
+            raise
 
     def upload_media(self, uploaded_file: Any, conversation_id: str, issuer_id: str) -> MediaMetadata:
         """
@@ -52,19 +60,21 @@ class MediasStore:
         object_key = f"{conversation_id}/{media_id}{file_extension}"
 
         try:
-            # ninja.UploadedFile has a .file attribute that contains the actual file-like object
+            # S3 storage
             file_obj = uploaded_file.file if hasattr(uploaded_file, "file") else uploaded_file
             self.s3_client.upload_fileobj(
                 Fileobj=file_obj,
                 Bucket=config.S3_BUCKET_NAME,
                 Key=object_key,
             )
-        except OSError as e:
-            raise OSError(f"Failed to store media file: {e}") from e
+            uri = f"s3://{config.S3_BUCKET_NAME}/{object_key}"
+        except Exception as e:
+            logger.error(f"S3 upload failed: {e}")
+            raise OSError(f"Failed to store media file in S3: {e}") from e
 
         return MediaMetadata(
             id=media_id,
-            uri=f"s3://{config.S3_BUCKET_NAME}/{object_key}",
+            uri=uri,
             key=object_key,
             size=uploaded_file.size,
             type=media_type,
@@ -74,16 +84,14 @@ class MediasStore:
 
     def generate_presigned_url(self, media_metadata: MediaMetadata, expiration: int = 1800) -> str:
         try:
-            response = self.s3_client.generate_presigned_url(
+            return self.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": config.S3_BUCKET_NAME, "Key": media_metadata.key},
                 ExpiresIn=expiration,
             )
         except ClientError as e:
-            logger.error(e)
+            logger.error(f"Failed to generate S3 presigned URL: {e}")
             return None
-
-        return response
 
     def _determine_media_type(self, uploaded_file: Any) -> str:
         content_type = uploaded_file.content_type or ""

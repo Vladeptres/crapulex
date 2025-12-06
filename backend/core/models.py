@@ -35,11 +35,18 @@ class Message(BaseModel):
     timestamp: datetime
     reacts: list[React]
     medias_metadatas: list[MediaMetadata]
+    votes: dict[str, str] = {}  # VoterId -> VotedForId
+
+
+class ConversationUser(BaseModel):
+    user_id: str
+    pseudo: str | None = None
+    smiley: str | None = None
 
 
 class Conversation(BaseModel):
     id: str
-    users_ids: list[str]
+    users: dict[str, ConversationUser]
     name: str
     is_locked: bool
     is_visible: bool

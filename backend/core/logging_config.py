@@ -4,7 +4,6 @@ Structured logging configuration using loguru for better monitoring and debuggin
 
 import os
 import sys
-from datetime import datetime
 
 from loguru import logger
 
@@ -57,11 +56,11 @@ def setup_logging():
     # JSON structured logs for monitoring systems
     logger.add(
         f"{log_dir}/bourracho-structured.jsonl",
-        format=lambda record: format_json_log(record),
         level=log_level,
         rotation="100 MB",
         retention="30 days",
         compression="gz",
+        serialize=True,
     )
 
     # Error-only logs
@@ -123,7 +122,10 @@ def format_json_log(record):
 def log_performance(operation: str, duration_ms: float, **kwargs):
     """Log performance metrics for monitoring."""
     logger.bind(log_type="performance").info(
-        f"Performance: {operation}", operation=operation, duration_ms=duration_ms, **kwargs,
+        f"Performance: {operation}",
+        operation=operation,
+        duration_ms=duration_ms,
+        **kwargs,
     )
 
 
@@ -153,7 +155,9 @@ def log_api_request(method: str, path: str, status_code: int, duration_ms: float
 def log_business_event(event_type: str, **kwargs):
     """Log business events for analytics and monitoring."""
     logger.info(
-        f"Business Event: {event_type}", event_type=event_type, timestamp=datetime.utcnow().isoformat(), **kwargs,
+        f"Business Event: {event_type}",
+        event_type=event_type,
+        **kwargs,
     )
 
 
