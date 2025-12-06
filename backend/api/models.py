@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Literal
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, field_validator
 
 
 # Request Models (for incoming data)
@@ -41,6 +41,20 @@ class MessageUpdate(BaseModel):
     id: str
     content: str = None
     reacts: list[ReactPost] = None
+    votes: dict[str, str] = None  # VoterId -> VotedForId
+
+
+class ConversationUser(BaseModel):
+    """Schema for user data within a conversation"""
+    user_id: str
+    pseudo: str | None = None
+    smiley: str | None = None
+
+
+class ConversationUserUpdate(BaseModel):
+    """Schema for updating user data in a conversation"""
+    pseudo: str | None = None
+    smiley: str | None = None
 
 
 # Response Models (for outgoing data)
@@ -82,16 +96,24 @@ class MessageResponse(BaseModel):
     timestamp: datetime
     reacts: list[ReactResponse] = Field(default_factory=list)
     medias_metadatas: list[MediaMetadataResponse] = Field(default_factory=list)
+    votes: dict[str, str] = Field(default_factory=dict)  # VoterId -> VotedForId
 
 
 class ConversationResponse(BaseModel):
     """Schema for conversation data in responses"""
     id: str
-    users_ids: list[str]
+    users: dict[str, ConversationUser]
     name: str
     is_locked: bool
     is_visible: bool
     admin_id: str
+
+
+class ConversationUserResponse(BaseModel):
+    """Schema for user data in conversation responses"""
+    user_id: str
+    pseudo: str | None = None
+    smiley: str | None = None
 
 
 class SuccessResponse(BaseModel):

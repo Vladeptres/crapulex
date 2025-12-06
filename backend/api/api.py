@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from channels.layers import get_channel_layer
+from django.http import FileResponse, Http404
 from loguru import logger
 from ninja import File, NinjaAPI
 from ninja.files import UploadedFile
@@ -8,6 +12,8 @@ from api.models import (
     ConversationCreate,
     ConversationResponse,
     ConversationUpdate,
+    ConversationUserResponse,
+    ConversationUserUpdate,
     ErrorResponse,
     MessagePost,
     MessageResponse,
@@ -21,7 +27,7 @@ from core.stores_registry import StoresRegistry
 
 registry = StoresRegistry(db_name=MONGO_DB_NAME)
 
-api = NinjaAPI()
+api = NinjaAPI(urls_namespace="api")
 
 
 @api.post("health/", response={200: dict, 500: ErrorResponse})
@@ -83,21 +89,217 @@ def create_conversation(request, conversation: ConversationCreate):
 
 
 @api.post("chat/{conversation_id}/join", response={200: ConversationResponse, 500: ErrorResponse})
-def join_conversation(request, conversation_id: str):
+async def join_conversation(request, conversation_id: str):
     user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     try:
         logger.info(f"Received request to join conversation {conversation_id} for user {user_id}.")
         registry.join_conversation(user_id=user_id, conversation_id=conversation_id)
         logger.info(f"User {user_id} joined conversation {conversation_id}.")
+
+        # Get updated conversation data after join
         conversation = registry.get_conversation(conversation_id=conversation_id)
-        return 200, ConversationResponse(**conversation.model_dump())
+        user_data = conversation.users.get(user_id)
+
+        # Check if user needs an emoji assignment
+        is_new_user = not user_data or not user_data.smiley
+        assigned_emoji = None
+
+        if is_new_user:
+            import random
+
+            # List of fun emojis to randomly assign
+            available_emojis = [
+                "😀",
+                "😃",
+                "😄",
+                "😁",
+                "😆",
+                "😅",
+                "🤣",
+                "😂",
+                "🙂",
+                "🙃",
+                "😉",
+                "😊",
+                "😇",
+                "🥰",
+                "😍",
+                "🤩",
+                "😘",
+                "😗",
+                "😚",
+                "😙",
+                "😋",
+                "😛",
+                "😜",
+                "🤪",
+                "😝",
+                "🤑",
+                "🤗",
+                "🤭",
+                "🤫",
+                "🤔",
+                "🤐",
+                "🤨",
+                "😐",
+                "😑",
+                "😶",
+                "😏",
+                "😒",
+                "🙄",
+                "😬",
+                "🤥",
+                "😌",
+                "😔",
+                "😪",
+                "🤤",
+                "😴",
+                "😷",
+                "🤒",
+                "🤕",
+                "🤢",
+                "🤮",
+                "🤧",
+                "🥵",
+                "🥶",
+                "🥴",
+                "😵",
+                "🤯",
+                "🤠",
+                "🥳",
+                "😎",
+                "🤓",
+                "🧐",
+                "😕",
+                "😟",
+                "🙁",
+                "☹️",
+                "😮",
+                "😯",
+                "😲",
+                "😳",
+                "🥺",
+                "😦",
+                "😧",
+                "😨",
+                "😰",
+                "😥",
+                "😢",
+                "😭",
+                "😱",
+                "😖",
+                "😣",
+                "😞",
+                "😓",
+                "😩",
+                "😫",
+                "🥱",
+                "😤",
+                "😡",
+                "😠",
+                "🤬",
+                "😈",
+                "👿",
+                "💀",
+                "☠️",
+                "💩",
+                "🤡",
+                "👹",
+                "👺",
+                "👻",
+                "👽",
+                "👾",
+                "🤖",
+                "🎃",
+                "😺",
+                "😸",
+                "😹",
+                "😻",
+                "😼",
+                "😽",
+                "🙀",
+                "😿",
+                "😾",
+                "🐶",
+                "🐱",
+                "🐭",
+                "🐹",
+                "🐰",
+                "🦊",
+                "🐻",
+                "🐼",
+                "🐨",
+                "🐯",
+                "🦁",
+                "🐮",
+                "🐷",
+                "🐸",
+                "🐵",
+                "🙈",
+                "🙉",
+                "🙊",
+                "🐒",
+            ]
+
+            assigned_emoji = random.choice(available_emojis)
+
+            # Update user with random emoji
+            registry.update_conversation_user(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                smiley=assigned_emoji,
+            )
+
+            logger.info(
+                f"Assigned random emoji '{assigned_emoji}' to new user {user_id} in conversation {conversation_id}",
+            )
+
+        # Send websocket notifications to ALL users in the conversation
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            try:
+                # Send user join notification to all users in conversation
+                await channel_layer.group_send(
+                    f"chat_{conversation_id}",
+                    {
+                        "type": "user_joined",
+                        "conversation_id": conversation_id,
+                        "user_id": user_id,
+                        "assigned_emoji": assigned_emoji,  # Include the assigned emoji
+                    },
+                )
+
+                # If emoji was assigned, also send user data change notification
+                if assigned_emoji:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "user_data_changed",
+                            "conversation_id": conversation_id,
+                            "user_id": user_id,
+                            "smiley": assigned_emoji,
+                            "changed_by": "system",
+                        },
+                    )
+
+            except Exception as ws_error:
+                logger.warning(f"Failed to send websocket notifications for user join in {conversation_id}: {ws_error}")
+
+        # Return updated conversation data
+        updated_conversation = registry.get_conversation(conversation_id=conversation_id)
+        return 200, ConversationResponse(**updated_conversation.model_dump())
     except Exception as e:
         logger.error(f"Error joining conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}
 
 
 @api.post("chat/{conversation_id}/messages/", response={200: MessageResponse, 422: ErrorResponse, 500: ErrorResponse})
-def post_message(request, conversation_id: str, message: MessagePost, medias: File[list[UploadedFile] | None] = None):
+async def post_message(
+    request,
+    conversation_id: str,
+    message: MessagePost,
+    medias: File[list[UploadedFile] | None] = None,
+):
     user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     try:
         logger.info(f"Received request to post message to conversation {conversation_id}.")
@@ -108,6 +310,54 @@ def post_message(request, conversation_id: str, message: MessagePost, medias: Fi
         )
         created_message = registry.add_message(message_post=message_post, medias=medias)
         logger.info(f"Message posted to conversation {conversation_id}.")
+
+        # Send websocket notification for new message
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                # Convert message to JSON-serializable format
+                message_dict = created_message.model_dump()
+                # Convert datetime objects to ISO format strings
+                if message_dict.get("timestamp"):
+                    message_dict["timestamp"] = (
+                        message_dict["timestamp"].isoformat()
+                        if hasattr(message_dict["timestamp"], "isoformat")
+                        else str(message_dict["timestamp"])
+                    )
+                if message_dict.get("created_at"):
+                    message_dict["created_at"] = (
+                        message_dict["created_at"].isoformat()
+                        if hasattr(message_dict["created_at"], "isoformat")
+                        else str(message_dict["created_at"])
+                    )
+                if message_dict.get("updated_at"):
+                    message_dict["updated_at"] = (
+                        message_dict["updated_at"].isoformat()
+                        if hasattr(message_dict["updated_at"], "isoformat")
+                        else str(message_dict["updated_at"])
+                    )
+
+                # Convert media metadata timestamps to ISO format strings
+                if message_dict.get("medias_metadatas"):
+                    for media in message_dict["medias_metadatas"]:
+                        if media.get("timestamp"):
+                            media["timestamp"] = (
+                                media["timestamp"].isoformat()
+                                if hasattr(media["timestamp"], "isoformat")
+                                else str(media["timestamp"])
+                            )
+
+                await channel_layer.group_send(
+                    f"chat_{conversation_id}",
+                    {
+                        "type": "chat_message",
+                        "message": message_dict,
+                    },
+                )
+                logger.info(f"Sent new message notification for conversation {conversation_id}")
+        except Exception as ws_error:
+            logger.warning(f"Failed to send websocket notification for new message in {conversation_id}: {ws_error}")
+
         return 200, created_message
     except (ValueError, ValidationError) as ve:
         logger.warning(f"Validation error posting message to {conversation_id}: {ve}")
@@ -118,14 +368,70 @@ def post_message(request, conversation_id: str, message: MessagePost, medias: Fi
 
 
 @api.patch("chat/{conversation_id}", response={200: ConversationResponse, 422: ErrorResponse, 500: ErrorResponse})
-def patch_conversation(request, conversation_id: str, conversation: ConversationUpdate):
-    request.headers.get("user_id") or request.headers.get("User-Id")
+async def patch_conversation(request, conversation_id: str, conversation: ConversationUpdate):
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
     logger.info(f"Received request to update metadata for conversation {conversation_id}.")
     try:
+        # Get the old conversation to check if name changed
+        old_conversation = registry.get_conversation(conversation_id=conversation_id)
+        old_name = old_conversation.name
+
         registry.update_conversation(conversation_id=conversation_id, conversation_update=conversation)
         logger.info(f"Metadata updated for conversation {conversation_id}.")
 
         result_conversation = registry.get_conversation(conversation_id=conversation_id)
+
+        # Send WebSocket notifications for any conversation changes
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                # Check what changed and send appropriate notifications
+                old_locked = old_conversation.is_locked
+                old_visible = old_conversation.is_visible
+
+                # Name change notification
+                if conversation.name and conversation.name != old_name:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "conversation_name_changed",
+                            "conversation_id": conversation_id,
+                            "new_name": conversation.name,
+                            "changed_by": user_id,
+                        },
+                    )
+                    logger.info(f"Sent conversation name change notification for {conversation_id}")
+
+                # Lock state change notification
+                if conversation.is_locked is not None and conversation.is_locked != old_locked:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "conversation_lock_changed",
+                            "conversation_id": conversation_id,
+                            "is_locked": conversation.is_locked,
+                            "changed_by": user_id,
+                        },
+                    )
+                    logger.info(f"Sent conversation lock change notification for {conversation_id}")
+
+                # Visibility state change notification
+                if conversation.is_visible is not None and conversation.is_visible != old_visible:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "conversation_visibility_changed",
+                            "conversation_id": conversation_id,
+                            "is_visible": conversation.is_visible,
+                            "changed_by": user_id,
+                        },
+                    )
+                    logger.info(f"Sent conversation visibility change notification for {conversation_id}")
+
+        except Exception as ws_error:
+            # Log websocket error but don't fail the entire request
+            logger.warning(f"Failed to send websocket notification for {conversation_id}: {ws_error}")
+
         return 200, ConversationResponse(**result_conversation.model_dump())
     except ValidationError as ve:
         logger.warning(f"Validation error updating metadata for {conversation_id}: {ve}")
@@ -159,7 +465,7 @@ def get_conversation(request, conversation_id: str):
         return 500, {"error": str(e)}
 
 
-@api.get("/users", response={200: list[UserResponse], 500: ErrorResponse})
+@api.get("users", response={200: list[UserResponse], 500: ErrorResponse})
 def get_users(request):
     logger.info("Received request to get users.")
     users_ids = request.GET.getlist("users_ids", "*")
@@ -190,11 +496,34 @@ def get_conversations(request):
 
 
 @api.patch("chat/{conversation_id}/messages", response={200: MessageResponse, 500: ErrorResponse})
-def patch_message(request, conversation_id: str, message: MessageUpdate):
+async def patch_message(request, conversation_id: str, message: MessageUpdate):
     if not message.id:
         raise ValueError("Message id is required to update message")
     try:
+        user_id = request.headers.get("user_id") or request.headers.get("User-Id")
         logger.info(f"Received request to update message {message.id} for conversation {conversation_id}.")
+
+        # Check if conversation is locked for voting
+        conversation = registry.get_conversation(conversation_id=conversation_id)
+
+        # Handle voting - only allowed if conversation is locked
+        if message.votes is not None:
+            if not conversation.is_locked:
+                logger.warning(f"Voting attempt on unlocked conversation {conversation_id}")
+                return 500, {"error": "Voting is only allowed when conversation is locked"}
+
+            # Get current message to update votes
+            current_message = registry.get_message(message_id=message.id)
+            updated_votes = current_message.votes.copy() if current_message.votes else {}
+
+            # Update votes (user can only vote once per message)
+            for voter_id, voted_for_id in message.votes.items():
+                if voter_id == user_id:  # Only allow user to vote for themselves
+                    updated_votes[voter_id] = voted_for_id
+                    logger.info(f"User {user_id} voted for {voted_for_id} on message {message.id}")
+
+            # Update message with new votes
+            message.votes = updated_votes
 
         if message.reacts:
             react_post = ReactPost(emoji=message.reacts[0].emoji, issuer_id=message.reacts[0].issuer_id)
@@ -202,6 +531,60 @@ def patch_message(request, conversation_id: str, message: MessageUpdate):
 
         result_message = registry.update_message(message_id=message.id, message_update=message)
         logger.info(f"Message {message.id} updated for conversation {conversation_id}.")
+
+        # Send WebSocket notification for updates
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                # Convert message to JSON-serializable format
+                message_dict = result_message.model_dump()
+                # Convert datetime objects to ISO format strings
+                if message_dict.get("timestamp"):
+                    message_dict["timestamp"] = (
+                        message_dict["timestamp"].isoformat()
+                        if hasattr(message_dict["timestamp"], "isoformat")
+                        else str(message_dict["timestamp"])
+                    )
+                if message_dict.get("created_at"):
+                    message_dict["created_at"] = (
+                        message_dict["created_at"].isoformat()
+                        if hasattr(message_dict["created_at"], "isoformat")
+                        else str(message_dict["created_at"])
+                    )
+                if message_dict.get("updated_at"):
+                    message_dict["updated_at"] = (
+                        message_dict["updated_at"].isoformat()
+                        if hasattr(message_dict["updated_at"], "isoformat")
+                        else str(message_dict["updated_at"])
+                    )
+
+                # Send appropriate notification based on what was updated
+                if message.votes is not None:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "message_vote_updated",
+                            "conversation_id": conversation_id,
+                            "message_id": message.id,
+                            "message": message_dict,
+                            "changed_by": user_id,
+                        },
+                    )
+                    logger.info(f"Sent message vote update notification for {message.id}")
+                elif message.reacts:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "message_reaction_updated",
+                            "conversation_id": conversation_id,
+                            "message_id": message.id,
+                            "message": message_dict,
+                            "changed_by": user_id,
+                        },
+                    )
+                    logger.info(f"Sent message reaction update notification for {message.id}")
+        except Exception as ws_error:
+            logger.error(f"Failed to send WebSocket notification for message update: {ws_error}")
 
         return 200, MessageResponse(**result_message.model_dump())
     except Exception as e:
@@ -241,4 +624,142 @@ def delete_conversation(request, conversation_id: str):
         )
     except Exception as e:
         logger.error(f"Error deleting conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.post(
+    "chat/{conversation_id}/user",
+    response={200: ConversationUserResponse, 422: ErrorResponse, 500: ErrorResponse},
+)
+def create_conversation_user(request, conversation_id: str, user_data: ConversationUserUpdate):
+    current_user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        logger.info(
+            f"Received request to create/update user data for user {current_user_id} in conversation {conversation_id}.",
+        )
+        updated_user = registry.update_conversation_user(
+            conversation_id=conversation_id,
+            user_id=current_user_id,
+            pseudo=user_data.pseudo,
+            smiley=user_data.smiley,
+        )
+        logger.info(f"User data created/updated for user {current_user_id} in conversation {conversation_id}.")
+        return 200, ConversationUserResponse(
+            user_id=current_user_id,
+            pseudo=updated_user.pseudo,
+            smiley=updated_user.smiley,
+        )
+    except Exception as e:
+        logger.error(
+            f"Error creating/updating user data for user {current_user_id} in conversation {conversation_id}: {e}",
+        )
+        return 500, {"error": str(e)}
+
+
+@api.patch(
+    "chat/{conversation_id}/user/{target_user_id}",
+    response={200: ConversationUserResponse, 422: ErrorResponse, 500: ErrorResponse},
+)
+async def update_conversation_user(
+    request,
+    conversation_id: str,
+    target_user_id: str,
+    user_data: ConversationUserUpdate,
+):
+    current_user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        logger.info(
+            f"Received request from user {current_user_id} to update user data for user {target_user_id} in conversation {conversation_id}.",
+        )
+
+        # Handle empty string as deletion for both pseudo and smiley
+        pseudo = user_data.pseudo if user_data.pseudo != "" else None
+        smiley = user_data.smiley if user_data.smiley != "" else None
+
+        updated_user = registry.update_conversation_user(
+            conversation_id=conversation_id,
+            user_id=target_user_id,
+            pseudo=pseudo,
+            smiley=smiley,
+        )
+
+        # Send websocket notification for user data changes
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                await channel_layer.group_send(
+                    f"chat_{conversation_id}",
+                    {
+                        "type": "user_data_changed",
+                        "conversation_id": conversation_id,
+                        "user_id": target_user_id,
+                        "pseudo": updated_user.pseudo,
+                        "smiley": updated_user.smiley,
+                        "changed_by": current_user_id,
+                    },
+                )
+        except Exception as ws_error:
+            logger.warning(
+                f"Failed to send websocket notification for user data change in {conversation_id}: {ws_error}",
+            )
+
+        logger.info(f"User data updated for user {current_user_id} in conversation {conversation_id}.")
+        return 200, ConversationUserResponse(
+            user_id=current_user_id,
+            pseudo=updated_user.pseudo,
+            smiley=updated_user.smiley,
+        )
+    except Exception as e:
+        logger.error(f"Error updating user data for user {current_user_id} in conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.get("media/{media_id}")
+def serve_media(request, media_id: str):
+    """Serve locally stored media files"""
+    try:
+        # Find the message containing this media
+        message = registry.find_message_by_media_id(media_id)
+        if not message:
+            raise Http404("Media not found")
+
+        # Find the specific media in the message
+        for media in message.medias_metadatas:
+            if media.id == media_id:
+                if media.uri.startswith("file://"):
+                    file_path = Path(media.uri[7:])  # Remove "file://" prefix
+                    if file_path.exists():
+                        return FileResponse(
+                            open(file_path, "rb"),
+                            content_type=f"{media.type}/*",
+                            filename=f"{media_id}{file_path.suffix}",
+                        )
+
+        raise Http404("Media not found")
+    except Exception as e:
+        logger.error(f"Error serving media {media_id}: {e}")
+        raise Http404("Media not found")
+
+
+@api.get("chat/{conversation_id}/users", response={200: list[ConversationUserResponse], 500: ErrorResponse})
+def get_conversation_users(request, conversation_id: str):
+    try:
+        logger.info(f"Received request to get user data for conversation {conversation_id}.")
+        conversation = registry.get_conversation(conversation_id=conversation_id)
+
+        # Create response for all users in conversation
+        users_data = []
+        for user_id, conversation_user in conversation.users.items():
+            users_data.append(
+                ConversationUserResponse(
+                    user_id=user_id,
+                    pseudo=conversation_user.pseudo,
+                    smiley=conversation_user.smiley,
+                ),
+            )
+
+        logger.info(f"Fetched user data for {len(users_data)} users in conversation {conversation_id}.")
+        return 200, users_data
+    except Exception as e:
+        logger.error(f"Error fetching user data for conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}

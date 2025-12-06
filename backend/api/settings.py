@@ -60,6 +60,7 @@ if CORS_ORIGINS_ENV:
 else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ]
 
 # Allow credentials (cookies, authorization headers, etc.)
@@ -68,11 +69,12 @@ CORS_ALLOW_CREDENTIALS = True
 # Additional CORS settings for better compatibility
 CORS_PREFLIGHT_MAX_AGE = 86400
 
+# Allow all origins in development (more permissive for debugging)
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # Additional CORS settings for preflight requests
 CORS_URLS_REGEX = r"^.*$"  # Apply CORS to all URLs
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
