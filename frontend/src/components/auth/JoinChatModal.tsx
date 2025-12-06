@@ -52,7 +52,8 @@ export default function JoinChatModal({
           setIsOpen(false)
 
           // Check if user was already in the conversation
-          const wasAlreadyMember = conversation.users_ids?.includes(user.id)
+          const wasAlreadyMember =
+            conversation.users && user.id in conversation.users
           if (wasAlreadyMember) {
             showToast.success(
               'Already in chat!',

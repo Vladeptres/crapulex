@@ -20,8 +20,7 @@ import {
 import AppHeader from '@/components/layout/AppHeader'
 import { Button } from '@/components/ui/button'
 import { showToast } from '@/lib/toast'
-import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getUserInitials } from '@/lib/gravatar'
 import FunBackground from '@/components/ui/fun-background'
 
 import JoinChatModal from './JoinChatModal'
@@ -45,6 +44,36 @@ export default function WelcomeScreen({
   const [openId, setOpenId] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Listen for global conversation updates via WebSocket
+  useEffect(() => {
+    if (!user || conversations.length === 0) return
+
+    const handleGlobalUpdates = (event: CustomEvent) => {
+      const { conversationId } = event.detail
+      // Only refresh if we don't have the conversation in our list
+      // This prevents unnecessary API calls for conversations we're already tracking
+      const hasConversation = conversations.some(
+        conv => conv.id === conversationId
+      )
+      if (!hasConversation) {
+        fetchConversations()
+      }
+    }
+
+    // Listen for custom events from individual conversation WebSockets
+    window.addEventListener(
+      'conversationUpdated',
+      handleGlobalUpdates as EventListener
+    )
+
+    return () => {
+      window.removeEventListener(
+        'conversationUpdated',
+        handleGlobalUpdates as EventListener
+      )
+    }
+  }, [user, conversations.length])
 
   const fetchUsers = async () => {
     if (!user) return
@@ -117,6 +146,15 @@ export default function WelcomeScreen({
         },
       })
 
+      // Update local state immediately for better UX
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === conversation.id
+            ? { ...conv, is_locked: newLockState }
+            : conv
+        )
+      )
+
       if (newLockState) {
         showToast.success(
           'Conversation locked!',
@@ -128,7 +166,7 @@ export default function WelcomeScreen({
           'Users can now send messages to this conversation.'
         )
       }
-      fetchConversations()
+      // Removed fetchConversations() to prevent conflicts with WebSocket updates
     } catch (error) {
       console.error('Failed to update conversation lock state:', error)
       showToast.error(
@@ -153,6 +191,15 @@ export default function WelcomeScreen({
         },
       })
 
+      // Update local state immediately for better UX
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === conversation.id
+            ? { ...conv, is_visible: newVisibilityState }
+            : conv
+        )
+      )
+
       if (newVisibilityState) {
         showToast.success(
           'Conversation revealed!',
@@ -164,7 +211,7 @@ export default function WelcomeScreen({
           'Messages are now blurred for privacy.'
         )
       }
-      fetchConversations()
+      // Removed fetchConversations() to prevent conflicts with WebSocket updates
     } catch (error) {
       console.error('Failed to update conversation visibility:', error)
       showToast.error(
@@ -174,49 +221,59 @@ export default function WelcomeScreen({
     }
   }
 
-  const renderUserAvatars = (userIds: string[] | undefined) => {
-    if (!userIds || userIds.length === 0) {
+  const renderUserEmojis = (conversationUsers: Record<string, any>) => {
+    const userIds = Object.keys(conversationUsers || {})
+
+    if (userIds.length === 0) {
       return (
-        <div className="items-center gap-1 text-muted-foreground invisible md:visible">
+        <div className="flex items-center gap-1 text-muted-foreground invisible md:visible">
           <Users className="h-4 w-4" />
           <span className="text-sm">0 members</span>
         </div>
       )
     }
 
-    const maxAvatars = 5
-    const displayUsers = userIds.slice(0, maxAvatars)
-    const hasMoreUsers = userIds.length > maxAvatars
+    const maxEmojis = 8
+    const displayUsers = userIds.slice(0, maxEmojis)
+    const hasMoreUsers = userIds.length > maxEmojis
 
     return (
       <div className="flex items-center gap-1 invisible md:visible">
-        <div className="flex -space-x-2">
+        <div className="flex gap-1">
           {displayUsers.map(userId => {
             const user = users[userId]
-            return (
-              user && (
-                <Avatar
-                  key={userId}
-                  className="h-6 w-6 border-2 border-background"
-                  title={user.username}
-                >
-                  <AvatarImage
-                    src={getGravatarUrl(user.username, 100)}
-                    alt={user.username}
-                  />
-                  <AvatarFallback className="text-xs">
-                    {getUserInitials(user.username)}
-                  </AvatarFallback>
-                </Avatar>
-              )
+            const userConvData = conversationUsers[userId]
+
+            if (!user) return null
+
+            // Show emoji if available, otherwise show user initials in a small circle
+            return userConvData?.smiley ? (
+              <span
+                key={userId}
+                className="text-lg leading-none cursor-default"
+                title={`${user.username}${userConvData?.pseudo ? ` (${userConvData.pseudo})` : ''}`}
+              >
+                {userConvData.smiley}
+              </span>
+            ) : (
+              <span
+                key={userId}
+                className="text-xs bg-muted text-muted-foreground rounded-full w-5 h-5 flex items-center justify-center border cursor-default"
+                title={`${user.username}${userConvData?.pseudo ? ` (${userConvData.pseudo})` : ''} (no emoji set)`}
+              >
+                {getUserInitials(user.username)}
+              </span>
             )
           })}
         </div>
         {hasMoreUsers && (
           <span className="text-sm text-muted-foreground ml-1">
-            +{userIds.length - maxAvatars}
+            +{userIds.length - maxEmojis}
           </span>
         )}
+        <span className="text-sm text-muted-foreground ml-2">
+          {userIds.length} member{userIds.length !== 1 ? 's' : ''}
+        </span>
       </div>
     )
   }
@@ -354,60 +411,56 @@ export default function WelcomeScreen({
                                         {conversation.name || 'Unnamed Chat'}
                                       </h3>
                                     </div>
-                                    {renderUserAvatars(conversation.users_ids)}
+                                    {renderUserEmojis(conversation.users)}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {/* Visibility toggle button - only show for conversation creator */}
-                                  {conversation.users_ids &&
-                                    conversation.users_ids.length > 0 &&
-                                    conversation.users_ids[0] === user.id && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={e => {
-                                          e.stopPropagation()
-                                          handleToggleVisibility(conversation)
-                                        }}
-                                        className="h-6 w-6 p-0"
-                                        title={
-                                          conversation.is_visible
-                                            ? 'Hide conversation'
-                                            : 'Reveal conversation'
-                                        }
-                                      >
-                                        {conversation.is_visible ? (
-                                          <EyeOff className="h-3 w-3" />
-                                        ) : (
-                                          <Eye className="h-3 w-3" />
-                                        )}
-                                      </Button>
-                                    )}
+                                  {conversation.admin_id === user.id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        handleToggleVisibility(conversation)
+                                      }}
+                                      className="h-6 w-6 p-0"
+                                      title={
+                                        conversation.is_visible
+                                          ? 'Hide conversation'
+                                          : 'Reveal conversation'
+                                      }
+                                    >
+                                      {conversation.is_visible ? (
+                                        <EyeOff className="h-3 w-3" />
+                                      ) : (
+                                        <Eye className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  )}
                                   {/* Lock/Unlock button - only show for conversation creator */}
-                                  {conversation.users_ids &&
-                                    conversation.users_ids.length > 0 &&
-                                    conversation.users_ids[0] === user.id && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={e => {
-                                          e.stopPropagation()
-                                          handleUnlockConversation(conversation)
-                                        }}
-                                        className="h-6 w-6 p-0"
-                                        title={
-                                          conversation.is_locked
-                                            ? 'Unlock conversation'
-                                            : 'Lock conversation'
-                                        }
-                                      >
-                                        {conversation.is_locked ? (
-                                          <Unlock className="h-3 w-3" />
-                                        ) : (
-                                          <Lock className="h-3 w-3" />
-                                        )}
-                                      </Button>
-                                    )}
+                                  {conversation.admin_id === user.id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        handleUnlockConversation(conversation)
+                                      }}
+                                      className="h-6 w-6 p-0"
+                                      title={
+                                        conversation.is_locked
+                                          ? 'Unlock conversation'
+                                          : 'Lock conversation'
+                                      }
+                                    >
+                                      {conversation.is_locked ? (
+                                        <Unlock className="h-3 w-3" />
+                                      ) : (
+                                        <Lock className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  )}
                                   <span className="font-mono text-xs text-muted-foreground">
                                     #{conversation.id}
                                   </span>
