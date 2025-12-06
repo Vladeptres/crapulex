@@ -43,3 +43,10 @@ class MessagesStore:
         if not message:
             raise ValueError(f"Message {message_id} does not exist")
         return [React.model_validate(r) for r in message["reacts"]]
+
+    def find_message_by_media_id(self, media_id: str) -> Message | None:
+        """Find a message that contains media with the given ID"""
+        message_doc = self.messages_collection.find_one({"medias_metadatas.id": media_id})
+        if message_doc:
+            return Message.model_validate(message_doc)
+        return None

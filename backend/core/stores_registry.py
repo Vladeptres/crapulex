@@ -21,7 +21,7 @@ from api.models import (
 from core.conversations_store import ConversationsStore
 from core.medias_store import MediasStore
 from core.messages_store import MessagesStore
-from core.models import Conversation, MediaMetadata, Message, React, User
+from core.models import Conversation, ConversationUser, MediaMetadata, Message, React, User
 from core.users_store import UsersStore
 from core.utils import check_db_connection
 
@@ -66,12 +66,13 @@ class StoresRegistry:
             raise ValueError("User ID is required to create conversation.")
 
         # Convert API model to core model
+        conversation_id = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))  # noqa: S311
         conversation = Conversation(
-            id="".join(random.choices(string.ascii_uppercase + string.digits, k=6)),  # noqa: S311
+            id=conversation_id,
             name=conversation_create.name,
             is_locked=conversation_create.is_locked,
             is_visible=conversation_create.is_visible,
-            users_ids=[user_id],
+            users={user_id: ConversationUser(user_id=user_id)},
             admin_id=user_id,
         )
 
@@ -95,23 +96,16 @@ class StoresRegistry:
         return self.conversations_store.get_conversation(conversation_id=conversation_id)
 
     def update_conversation(self, conversation_id: str, conversation_update: ConversationUpdate) -> None:
-        # Get existing conversation
         existing_conversation = self.conversations_store.get_conversation(conversation_id=conversation_id)
-
-        # Update only provided fields
         updated_conversation = Conversation(
-            id=conversation_id,
-            users_ids=existing_conversation.users_ids,
-            name=conversation_update.name or existing_conversation.name,
-            is_locked=conversation_update.is_locked or existing_conversation.is_locked,
-            is_visible=conversation_update.is_visible or existing_conversation.is_visible,
-            admin_id=conversation_update.admin_id or existing_conversation.admin_id,
+            **conversation_update.model_dump(exclude_unset=True),
+            **existing_conversation.model_dump(exclude=set(conversation_update.model_dump(exclude_unset=True).keys())),
         )
-
         self.conversations_store.update_conversation(updated_conversation)
 
     def add_message(self, message_post: MessagePost, medias: list[Any] | None = None) -> MessageResponse:
-        if message_post.issuer_id not in self.conversations_store.get_user_ids(message_post.conversation_id):
+        conversation = self.conversations_store.get_conversation(message_post.conversation_id)
+        if message_post.issuer_id not in conversation.users:
             raise ValueError(
                 f"User {message_post.issuer_id} is not among registered user of "
                 f"conversation {message_post.conversation_id}",
@@ -224,3 +218,30 @@ class StoresRegistry:
 
     def leave_conversation(self, user_id: str, conversation_id: str) -> Conversation:
         return self.conversations_store.leave_conversation(user_id=user_id, conversation_id=conversation_id)
+
+    def update_conversation_user(
+        self,
+        conversation_id: str,
+        user_id: str,
+        pseudo: str | None = None,
+        smiley: str | None = None,
+    ) -> ConversationUser:
+        """Update user data in a conversation"""
+        return self.conversations_store.update_conversation_user(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            pseudo=pseudo,
+            smiley=smiley,
+        )
+
+    def get_conversation_user(self, conversation_id: str, user_id: str) -> ConversationUser | None:
+        """Get user data for a specific user in a conversation"""
+        return self.conversations_store.get_conversation_user(conversation_id=conversation_id, user_id=user_id)
+
+    def find_message_by_media_id(self, media_id: str) -> Message | None:
+        """Find a message that contains media with the given ID"""
+        return self.messages_store.find_message_by_media_id(media_id=media_id)
+
+    def get_message(self, message_id: str) -> Message:
+        """Get a message by its ID"""
+        return self.messages_store.get_message(message_id=message_id)

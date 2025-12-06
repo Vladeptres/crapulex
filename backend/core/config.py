@@ -15,7 +15,7 @@ MONGO_DB_HOST = os.environ.get("MONGO_DB_HOST", "localhost")
 MONGO_DB_PORT = os.environ.get("MONGO_DB_PORT", "27017")
 
 # Construct MongoDB URL from components
-MONGO_DB_URL = f"mongodb://{MONGO_DB_USERNAME}:{MONGO_DB_PASSWORD}@{MONGO_DB_HOST}:{MONGO_DB_PORT}"
+MONGO_DB_URL = f"mongodb://{MONGO_DB_USERNAME}:{MONGO_DB_PASSWORD}@{MONGO_DB_HOST}:{MONGO_DB_PORT}/{MONGO_DB_NAME}?authSource=admin"
 
 # Redis Configuration
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")

@@ -2,11 +2,13 @@
 Monitoring utilities for Django backend including metrics, logging, and health checks.
 """
 
+import os
 import threading
 import time
 from datetime import UTC, datetime
 from typing import Any
 
+import psutil
 from django.http import HttpRequest, HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 from loguru import logger
@@ -134,7 +136,8 @@ class MonitoringMiddleware(MiddlewareMixin):
 
         # Decrement active connections
         metrics_collector._metrics["active_connections"] = max(
-            0, metrics_collector._metrics.get("active_connections", 1) - 1,
+            0,
+            metrics_collector._metrics.get("active_connections", 1) - 1,
         )
 
         # Track errors
@@ -166,7 +169,8 @@ class MonitoringMiddleware(MiddlewareMixin):
 
         # Decrement active connections
         metrics_collector._metrics["active_connections"] = max(
-            0, metrics_collector._metrics.get("active_connections", 1) - 1,
+            0,
+            metrics_collector._metrics.get("active_connections", 1) - 1,
         )
 
         # Log exception details
@@ -179,7 +183,6 @@ class MonitoringMiddleware(MiddlewareMixin):
             response_time_ms=response_time * 1000,
             exception_timestamp=datetime.now(UTC).isoformat(),
         )
-
 
     def _get_client_ip(self, request: HttpRequest) -> str:
         """Get client IP address from request."""
@@ -273,9 +276,6 @@ class HealthChecker:
     @staticmethod
     def get_system_health() -> dict[str, Any]:
         """Get overall system health status."""
-        import os
-
-        import psutil
 
         # CPU and memory usage
         cpu_percent = psutil.cpu_percent(interval=1)
