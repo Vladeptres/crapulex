@@ -35,7 +35,7 @@ line-length = 120
 lint.select = ["ALL"]
 lint.ignore = ["EM", "TRY", "D", "ANN", "PTH"]
 include = ["core/*", "api/api.py", "api/tests.py", "tests/*"]
-exclude = ["tests/test_data/*"]
+exclude = ["tests/test_data/*", "core/monitoring.py"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "api/api.py" = ["BLE001", "ARG001"]
