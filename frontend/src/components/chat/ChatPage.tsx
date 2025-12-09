@@ -401,7 +401,8 @@ export default function ChatPage({
           formData.append('medias', photoFile)
         }
 
-        const response = await fetch(`/chat/${conversation.id}/messages/`, {
+        const apiUrl = import.meta.env.VITE_API_URL || ''
+        const response = await fetch(`${apiUrl}/chat/${conversation.id}/messages/`, {
           method: 'POST',
           headers: {
             'User-Id': user.id,
@@ -701,7 +702,7 @@ export default function ChatPage({
             </div>
           </div>
         ) : (
-          groupMessages(messages).map((group, groupIndex) => (
+          groupMessages(messages || []).map((group, groupIndex) => (
             <div
               key={`${group.userId}-${group.timestamp}`}
               className={`group flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
@@ -807,7 +808,7 @@ export default function ChatPage({
                         message.medias_metadatas.length > 0 ? (
                           <div className="space-y-2">
                             {/* Photo messages */}
-                            {message.medias_metadatas
+                            {(message.medias_metadatas || [])
                               .filter(media => media.type === 'image')
                               .map(imageMedia => (
                                 <PhotoDisplay
@@ -819,7 +820,7 @@ export default function ChatPage({
                               ))}
 
                             {/* Audio messages */}
-                            {message.medias_metadatas
+                            {(message.medias_metadatas || [])
                               .filter(media => media.type === 'audio')
                               .map(audioMedia => (
                                 <AudioPlayer
@@ -861,7 +862,7 @@ export default function ChatPage({
                           className={`flex flex-wrap gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
                         >
                           {Array.from(
-                            new Set(message.reacts.map(r => r.emoji))
+                            new Set((message.reacts || []).map(r => r.emoji))
                           ).map(emoji => {
                             const count = getReactionCount(message, emoji)
                             const userReacted = hasUserReacted(message, emoji)

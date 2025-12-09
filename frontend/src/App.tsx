@@ -11,8 +11,11 @@ import { useAuth } from '@/hooks/useAuth'
 
 import './App.css'
 
+const apiUrl = import.meta.env.VITE_API_URL || ''
+console.log('Setting API baseURL to:', apiUrl)
+
 client.setConfig({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: apiUrl,
 })
 
 function App() {

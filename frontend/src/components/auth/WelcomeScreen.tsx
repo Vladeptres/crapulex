@@ -108,8 +108,10 @@ export default function WelcomeScreen({
         },
       })
 
-      if (response.data) {
+      if (response.data && Array.isArray(response.data)) {
         setConversations(response.data)
+      } else {
+        setConversations([])
       }
     } catch (error) {
       console.error('Failed to fetch conversations:', error)
@@ -344,7 +346,7 @@ export default function WelcomeScreen({
               </div>
             ) : (
               <div className="space-y-0 border-y overflow-hidden bg-card">
-                {conversations.map((conversation, index) => {
+                {(conversations || []).map((conversation, index) => {
                   const isOpen = openId === conversation.id
 
                   return (
