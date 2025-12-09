@@ -78,7 +78,7 @@ class MediaMetadataResponse(BaseModel):
     type: Literal["image", "video", "audio"]
     issuer_id: str
     timestamp: datetime
-    presigned_url: str
+    presigned_url: str = None
 
 
 class ReactResponse(BaseModel):

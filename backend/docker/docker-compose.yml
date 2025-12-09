@@ -1,7 +1,7 @@
 services:
   mongodb:
     image: mongo:7.0
-    container_name: bourracho-mongo-${CONTAINER_SUFFIX}
+    container_name: crapulex-mongo-${CONTAINER_SUFFIX}
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
@@ -17,7 +17,7 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    container_name: bourracho-redis-${CONTAINER_SUFFIX}
+    container_name: crapulex-redis-${CONTAINER_SUFFIX}
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --port ${REDIS_PORT}
     ports:
@@ -31,7 +31,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: bourracho-backend-${CONTAINER_SUFFIX}
+    container_name: crapulex-backend-${CONTAINER_SUFFIX}
     restart: unless-stopped
     environment:
       # Pass all environment variables from the env file to the container
@@ -40,14 +40,14 @@ services:
       - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
       - MONGO_DB_NAME=${MONGO_DB_NAME}
-      - MONGO_DB_HOST=bourracho-mongo-${CONTAINER_SUFFIX}
+      - MONGO_DB_HOST=crapulex-mongo-${CONTAINER_SUFFIX}
       - MONGO_DB_PORT=${MONGO_DB_PORT}
-      - BOURRACHO_SECRET_KEY=${BOURRACHO_SECRET_KEY}
+      - CRAPULEX_SECRET_KEY=${CRAPULEX_SECRET_KEY}
       - DEBUG=${DEBUG}
-      - REDIS_HOST=bourracho-redis-${CONTAINER_SUFFIX}
+      - REDIS_HOST=crapulex-redis-${CONTAINER_SUFFIX}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REDIS_DB=${REDIS_DB}
-      - REDIS_PORT=6379
+      - REDIS_PORT=${REDIS_PORT}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
@@ -70,7 +70,7 @@ volumes:
   redis_data_prod:
 
 networks:
-  bourracho-dev-network:
+  crapulex-dev-network:
     driver: bridge
-  bourracho-prod-network:
+  crapulex-prod-network:
     driver: bridge

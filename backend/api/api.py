@@ -18,7 +18,6 @@ from api.models import (
     MessagePost,
     MessageResponse,
     MessageUpdate,
-    ReactPost,
     SuccessResponse,
     UserCredentials,
     UserResponse,
@@ -503,32 +502,6 @@ async def patch_message(request, conversation_id: str, message: MessageUpdate):
         user_id = request.headers.get("user_id") or request.headers.get("User-Id")
         logger.info(f"Received request to update message {message.id} for conversation {conversation_id}.")
 
-        # Check if conversation is locked for voting
-        conversation = registry.get_conversation(conversation_id=conversation_id)
-
-        # Handle voting - only allowed if conversation is locked
-        if message.votes is not None:
-            if not conversation.is_locked:
-                logger.warning(f"Voting attempt on unlocked conversation {conversation_id}")
-                return 500, {"error": "Voting is only allowed when conversation is locked"}
-
-            # Get current message to update votes
-            current_message = registry.get_message(message_id=message.id)
-            updated_votes = current_message.votes.copy() if current_message.votes else {}
-
-            # Update votes (user can only vote once per message)
-            for voter_id, voted_for_id in message.votes.items():
-                if voter_id == user_id:  # Only allow user to vote for themselves
-                    updated_votes[voter_id] = voted_for_id
-                    logger.info(f"User {user_id} voted for {voted_for_id} on message {message.id}")
-
-            # Update message with new votes
-            message.votes = updated_votes
-
-        if message.reacts:
-            react_post = ReactPost(emoji=message.reacts[0].emoji, issuer_id=message.reacts[0].issuer_id)
-            registry.add_react(react_post=react_post, message_id=message.id)
-
         result_message = registry.update_message(message_id=message.id, message_update=message)
         logger.info(f"Message {message.id} updated for conversation {conversation_id}.")
 
@@ -536,27 +509,8 @@ async def patch_message(request, conversation_id: str, message: MessageUpdate):
         try:
             channel_layer = get_channel_layer()
             if channel_layer:
-                # Convert message to JSON-serializable format
-                message_dict = result_message.model_dump()
-                # Convert datetime objects to ISO format strings
-                if message_dict.get("timestamp"):
-                    message_dict["timestamp"] = (
-                        message_dict["timestamp"].isoformat()
-                        if hasattr(message_dict["timestamp"], "isoformat")
-                        else str(message_dict["timestamp"])
-                    )
-                if message_dict.get("created_at"):
-                    message_dict["created_at"] = (
-                        message_dict["created_at"].isoformat()
-                        if hasattr(message_dict["created_at"], "isoformat")
-                        else str(message_dict["created_at"])
-                    )
-                if message_dict.get("updated_at"):
-                    message_dict["updated_at"] = (
-                        message_dict["updated_at"].isoformat()
-                        if hasattr(message_dict["updated_at"], "isoformat")
-                        else str(message_dict["updated_at"])
-                    )
+                # Convert message to JSON-serializable format using Pydantic
+                message_dict = result_message.model_dump(mode="json")
 
                 # Send appropriate notification based on what was updated
                 if message.votes is not None:

@@ -26,7 +26,8 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^https:\/\/.*\/(chat|login|register|users|health|media)\/.*/,
+            urlPattern:
+              /^https:\/\/.*\/(chat|login|register|users|health|media)\/.*/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',

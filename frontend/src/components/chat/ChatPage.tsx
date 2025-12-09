@@ -402,13 +402,16 @@ export default function ChatPage({
         }
 
         const apiUrl = import.meta.env.VITE_API_URL || ''
-        const response = await fetch(`${apiUrl}/chat/${conversation.id}/messages/`, {
-          method: 'POST',
-          headers: {
-            'User-Id': user.id,
-          },
-          body: formData,
-        })
+        const response = await fetch(
+          `${apiUrl}/chat/${conversation.id}/messages/`,
+          {
+            method: 'POST',
+            headers: {
+              'User-Id': user.id,
+            },
+            body: formData,
+          }
+        )
 
         if (response.ok) {
           // Message will be added via WebSocket, just clear input

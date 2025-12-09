@@ -160,19 +160,13 @@ class StoresRegistry:
         existing_message = self.messages_store.get_message(message_id=message_id)
 
         # Update only provided fields
-        updated_message = Message(
-            id=message_id,
-            content=message_update.content or existing_message.content,
-            conversation_id=existing_message.conversation_id,
-            issuer_id=existing_message.issuer_id,
-            timestamp=existing_message.timestamp,
-            reacts=existing_message.reacts,
-            medias_metadatas=existing_message.medias_metadatas,
-        )
+        existing_message.votes.update(message_update.votes or {})
+        existing_message.reacts.extend(message_update.reacts or [])
+        existing_message.content = message_update.content or existing_message.content
 
-        self.messages_store.update_message(message=updated_message)
+        self.messages_store.update_message(message=existing_message)
         logger.info(f"Message {message_id} successfully updated.")
-        return updated_message
+        return existing_message
 
     def get_messages(self, conversation_id: str) -> list[MessageResponse]:
         messages = self.messages_store.get_messages(conversation_id=conversation_id)
