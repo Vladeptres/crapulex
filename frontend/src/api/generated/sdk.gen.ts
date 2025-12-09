@@ -55,6 +55,8 @@ import type {
   ApiApiUpdateConversationUserData,
   ApiApiUpdateConversationUserResponses,
   ApiApiUpdateConversationUserErrors,
+  ApiApiServeMediaData,
+  ApiApiServeMediaResponses,
   ApiApiGetConversationUsersData,
   ApiApiGetConversationUsersResponses,
   ApiApiGetConversationUsersErrors,
@@ -90,7 +92,7 @@ export const apiApiHealthCheck = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/health/',
+    url: '/health/',
     ...options,
   })
 }
@@ -107,7 +109,7 @@ export const apiApiRegisterUser = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/register/',
+    url: '/register/',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -128,7 +130,7 @@ export const apiApiLogin = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/login/',
+    url: '/login/',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -149,7 +151,7 @@ export const apiApiGetConversations = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/',
+    url: '/chat/',
     ...options,
   })
 }
@@ -166,7 +168,7 @@ export const apiApiCreateConversation = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/',
+    url: '/chat/',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -187,7 +189,7 @@ export const apiApiJoinConversation = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/join',
+    url: '/chat/{conversation_id}/join',
     ...options,
   })
 }
@@ -204,7 +206,7 @@ export const apiApiGetMessages = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/messages/',
+    url: '/chat/{conversation_id}/messages/',
     ...options,
   })
 }
@@ -222,7 +224,7 @@ export const apiApiPostMessage = <ThrowOnError extends boolean = true>(
   >({
     ...formDataBodySerializer,
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/messages/',
+    url: '/chat/{conversation_id}/messages/',
     ...options,
     headers: {
       'Content-Type': null,
@@ -243,7 +245,7 @@ export const apiApiGetConversation = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}',
+    url: '/chat/{conversation_id}',
     ...options,
   })
 }
@@ -260,7 +262,7 @@ export const apiApiPatchConversation = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}',
+    url: '/chat/{conversation_id}',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -281,7 +283,7 @@ export const apiApiGetUsers = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/users',
+    url: '/users',
     ...options,
   })
 }
@@ -298,7 +300,7 @@ export const apiApiPatchMessage = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/messages',
+    url: '/chat/{conversation_id}/messages',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -319,7 +321,7 @@ export const apiApiLeaveConversation = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/leave',
+    url: '/chat/{conversation_id}/leave',
     ...options,
   })
 }
@@ -336,7 +338,7 @@ export const apiApiDeleteConversation = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/',
+    url: '/chat/{conversation_id}/',
     ...options,
   })
 }
@@ -355,7 +357,7 @@ export const apiApiCreateConversationUser = <
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/user',
+    url: '/chat/{conversation_id}/user',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -378,12 +380,29 @@ export const apiApiUpdateConversationUser = <
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/user/{target_user_id}',
+    url: '/chat/{conversation_id}/user/{target_user_id}',
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
+  })
+}
+
+/**
+ * Serve Media
+ * Serve locally stored media files
+ */
+export const apiApiServeMedia = <ThrowOnError extends boolean = true>(
+  options: Options<ApiApiServeMediaData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ApiApiServeMediaResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: '/media/{media_id}',
+    ...options,
   })
 }
 
@@ -399,7 +418,7 @@ export const apiApiGetConversationUsers = <ThrowOnError extends boolean = true>(
     ThrowOnError
   >({
     responseType: 'json',
-    url: '/api/chat/{conversation_id}/users',
+    url: '/chat/{conversation_id}/users',
     ...options,
   })
 }

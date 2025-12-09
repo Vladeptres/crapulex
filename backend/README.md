@@ -293,7 +293,6 @@ npm install
 # Create frontend environment file for containerized testing
 cat > .env.test << EOF
 VITE_API_BASE_URL=http://localhost:8001
-VITE_WS_BASE_URL=ws://localhost:8001
 VITE_ENVIRONMENT=test
 EOF
 
@@ -339,7 +338,6 @@ npm install
 # Create frontend environment file for manual backend testing
 cat > .env.test << EOF
 VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_BASE_URL=ws://localhost:8000
 VITE_ENVIRONMENT=test
 EOF
 

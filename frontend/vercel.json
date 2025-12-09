@@ -4,10 +4,8 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
-  "env": {
-    "VITE_API_URL": "https://crapulex-dev.duckdns.org"
-  },
-  "rewrites": [
+  "env": {},
+    "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"

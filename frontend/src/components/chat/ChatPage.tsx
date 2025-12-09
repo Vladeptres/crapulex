@@ -71,7 +71,7 @@ export default function ChatPage({
   const [showVoteMenu, setShowVoteMenu] = useState<string | null>(null) // messageId or null
 
   // WebSocket connection for real-time updates
-  useWebSocket(`ws://localhost:8002/ws/chat/${conversation.id}/`, {
+  useWebSocket(`${import.meta.env.VITE_API_URL}/ws/chat/${conversation.id}/`, {
     onMessage: message => {
       // Debug: Check if this is a raw message without type wrapper
       if (!message.type && message.id && message.content) {
@@ -401,7 +401,7 @@ export default function ChatPage({
           formData.append('medias', photoFile)
         }
 
-        const response = await fetch(`/api/chat/${conversation.id}/messages/`, {
+        const response = await fetch(`/chat/${conversation.id}/messages/`, {
           method: 'POST',
           headers: {
             'User-Id': user.id,

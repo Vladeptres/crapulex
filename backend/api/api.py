@@ -27,7 +27,7 @@ from core.stores_registry import StoresRegistry
 
 registry = StoresRegistry(db_name=MONGO_DB_NAME)
 
-api = NinjaAPI(urls_namespace="api")
+api = NinjaAPI()
 
 
 @api.post("health/", response={200: dict, 500: ErrorResponse})

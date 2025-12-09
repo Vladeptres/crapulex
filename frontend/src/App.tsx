@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import './App.css'
 
 client.setConfig({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8002', // Fallback
+  baseURL: import.meta.env.VITE_API_URL || '',
 })
 
 function App() {

@@ -26,7 +26,7 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^https:\/\/.*\/api\/.*/,
+            urlPattern: /^https:\/\/.*\/(chat|login|register|users|health|media)\/.*/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -100,10 +100,40 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:8002',
+      '/health': {
+        target: 'https://crapulex.duckdns.org',
         changeOrigin: true,
-        secure: false,
+        secure: true,
+      },
+      '/register': {
+        target: 'https://crapulex.duckdns.org',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/login': {
+        target: 'https://crapulex.duckdns.org',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/chat': {
+        target: 'https://crapulex.duckdns.org',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/users': {
+        target: 'https://crapulex.duckdns.org',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/media': {
+        target: 'https://crapulex.duckdns.org',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/openapi.json': {
+        target: 'https://crapulex.duckdns.org',
+        changeOrigin: true,
+        secure: true,
       },
     },
   },

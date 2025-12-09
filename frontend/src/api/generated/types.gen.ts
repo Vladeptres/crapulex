@@ -344,7 +344,7 @@ export type ApiApiHealthCheckData = {
   body?: never
   path?: never
   query?: never
-  url: '/api/health/'
+  url: '/health/'
 }
 
 export type ApiApiHealthCheckErrors = {
@@ -374,7 +374,7 @@ export type ApiApiRegisterUserData = {
   body: UserCredentials
   path?: never
   query?: never
-  url: '/api/register/'
+  url: '/register/'
 }
 
 export type ApiApiRegisterUserErrors = {
@@ -405,7 +405,7 @@ export type ApiApiLoginData = {
   body: UserCredentials
   path?: never
   query?: never
-  url: '/api/login/'
+  url: '/login/'
 }
 
 export type ApiApiLoginErrors = {
@@ -435,7 +435,7 @@ export type ApiApiGetConversationsData = {
   body?: never
   path?: never
   query?: never
-  url: '/api/chat/'
+  url: '/chat/'
 }
 
 export type ApiApiGetConversationsErrors = {
@@ -463,7 +463,7 @@ export type ApiApiCreateConversationData = {
   body: ConversationCreate
   path?: never
   query?: never
-  url: '/api/chat/'
+  url: '/chat/'
 }
 
 export type ApiApiCreateConversationErrors = {
@@ -499,7 +499,7 @@ export type ApiApiJoinConversationData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/join'
+  url: '/chat/{conversation_id}/join'
 }
 
 export type ApiApiJoinConversationErrors = {
@@ -531,7 +531,7 @@ export type ApiApiGetMessagesData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/messages/'
+  url: '/chat/{conversation_id}/messages/'
 }
 
 export type ApiApiGetMessagesErrors = {
@@ -573,7 +573,7 @@ export type ApiApiPostMessageData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/messages/'
+  url: '/chat/{conversation_id}/messages/'
 }
 
 export type ApiApiPostMessageErrors = {
@@ -609,7 +609,7 @@ export type ApiApiGetConversationData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}'
+  url: '/chat/{conversation_id}'
 }
 
 export type ApiApiGetConversationErrors = {
@@ -641,7 +641,7 @@ export type ApiApiPatchConversationData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}'
+  url: '/chat/{conversation_id}'
 }
 
 export type ApiApiPatchConversationErrors = {
@@ -672,7 +672,7 @@ export type ApiApiGetUsersData = {
   body?: never
   path?: never
   query?: never
-  url: '/api/users'
+  url: '/users'
 }
 
 export type ApiApiGetUsersErrors = {
@@ -705,7 +705,7 @@ export type ApiApiPatchMessageData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/messages'
+  url: '/chat/{conversation_id}/messages'
 }
 
 export type ApiApiPatchMessageErrors = {
@@ -737,7 +737,7 @@ export type ApiApiLeaveConversationData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/leave'
+  url: '/chat/{conversation_id}/leave'
 }
 
 export type ApiApiLeaveConversationErrors = {
@@ -773,7 +773,7 @@ export type ApiApiDeleteConversationData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/'
+  url: '/chat/{conversation_id}/'
 }
 
 export type ApiApiDeleteConversationErrors = {
@@ -805,7 +805,7 @@ export type ApiApiCreateConversationUserData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/user'
+  url: '/chat/{conversation_id}/user'
 }
 
 export type ApiApiCreateConversationUserErrors = {
@@ -845,7 +845,7 @@ export type ApiApiUpdateConversationUserData = {
     target_user_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/user/{target_user_id}'
+  url: '/chat/{conversation_id}/user/{target_user_id}'
 }
 
 export type ApiApiUpdateConversationUserErrors = {
@@ -872,6 +872,25 @@ export type ApiApiUpdateConversationUserResponses = {
 export type ApiApiUpdateConversationUserResponse =
   ApiApiUpdateConversationUserResponses[keyof ApiApiUpdateConversationUserResponses]
 
+export type ApiApiServeMediaData = {
+  body?: never
+  path: {
+    /**
+     * Media Id
+     */
+    media_id: string
+  }
+  query?: never
+  url: '/media/{media_id}'
+}
+
+export type ApiApiServeMediaResponses = {
+  /**
+   * OK
+   */
+  200: unknown
+}
+
 export type ApiApiGetConversationUsersData = {
   body?: never
   path: {
@@ -881,7 +900,7 @@ export type ApiApiGetConversationUsersData = {
     conversation_id: string
   }
   query?: never
-  url: '/api/chat/{conversation_id}/users'
+  url: '/chat/{conversation_id}/users'
 }
 
 export type ApiApiGetConversationUsersErrors = {

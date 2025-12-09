@@ -30,10 +30,10 @@ from api.monitoring_views import (
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/monitoring/", monitoring_dashboard, name="monitoring_dashboard"),
-    path("api/monitoring/health/", health_check, name="health_check"),
-    path("api/monitoring/health/detailed/", health_detailed, name="health_detailed"),
-    path("api/monitoring/metrics/", metrics_json, name="metrics_json"),
-    path("api/monitoring/metrics/prometheus/", metrics_prometheus, name="metrics_prometheus"),
-    path("api/", api.urls),
+    path("/monitoring/", monitoring_dashboard, name="monitoring_dashboard"),
+    path("/monitoring/health/", health_check, name="health_check"),
+    path("/monitoring/health/detailed/", health_detailed, name="health_detailed"),
+    path("/monitoring/metrics/", metrics_json, name="metrics_json"),
+    path("/monitoring/metrics/prometheus/", metrics_prometheus, name="metrics_prometheus"),
+    path("", api.urls),
 ]
