@@ -13,6 +13,7 @@ dependencies = [
     "botocore>=1.39.10",
     "channels>=4.2.2",
     "channels-redis>=4.3.0",
+    "chat-analyser",
     "daphne>=4.2.1",
     "django>=3.2",
     "django-cors-headers>=4.7.0",
@@ -46,6 +47,9 @@ exclude = ["tests/test_data/*", "core/monitoring.py"]
 include-package-data = true
 packages.find.include = ['core*', "core/*.json"]
 packages.find.exclude = ['tests*']
+
+[tool.uv.sources]
+chat-analyser = { path = "chat_analyser-0.1.0-py3-none-any.whl" }
 
 [build-system]
 requires = ["setuptools >= 61.0"]

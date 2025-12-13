@@ -70,6 +70,8 @@ volumes:
   redis_data_prod:
 
 networks:
+  bourracho-dev-network:
+    driver: bridge
   crapulex-dev-network:
     driver: bridge
   crapulex-prod-network:

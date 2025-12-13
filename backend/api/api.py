@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import chat_analyser
 from channels.layers import get_channel_layer
 from django.http import FileResponse, Http404
 from loguru import logger
@@ -716,4 +717,26 @@ def get_conversation_users(request, conversation_id: str):
         return 200, users_data
     except Exception as e:
         logger.error(f"Error fetching user data for conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.get("chat/{conversation_id}/analyse", response={200: chat_analyser.api.models.ConversationAnalysisResponse, 500: ErrorResponse})
+def analyse_chat(request, conversation_id: str):
+    try:
+        logger.info(f"Received request to analyse conversation {conversation_id}.")
+        conversation = registry.get_conversation(conversation_id=conversation_id)
+        messages = registry.get_messages(conversation_id=conversation_id)
+        if not conversation.analysis:
+            analyse = chat_analyser.core.analyser.analyse_chat(
+                context_type="party",
+                users=conversation.users,
+                messages=messages,
+            )
+            conversation.analysis = analyse.model_dump()
+            registry.update_conversation(conversation_id=conversation_id, conversation_update=conversation)
+        
+        logger.info(f"Analysed conversation {conversation_id}.")
+        return 200, chat_analyser.api.models.ConversationAnalysisResponse.model_validate(conversation.analysis)
+    except Exception as e:
+        logger.error(f"Error analysing conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}

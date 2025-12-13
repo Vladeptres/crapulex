@@ -51,3 +51,4 @@ class Conversation(BaseModel):
     is_locked: bool
     is_visible: bool
     admin_id: str
+    analysis: dict | None = None

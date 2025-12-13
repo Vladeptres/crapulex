@@ -30,6 +30,7 @@ class ConversationUpdate(BaseModel):
     is_locked: bool = None
     is_visible: bool = None
     admin_id: str = None
+    analysis: dict = None
 
 class ReactPost(BaseModel):
     """Schema for posting reactions"""
