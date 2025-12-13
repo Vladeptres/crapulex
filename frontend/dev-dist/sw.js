@@ -82,7 +82,7 @@ define(['./workbox-f001acab'], (function (workbox) { 'use strict';
     "revision": "f908c9444d1a0d716965130df91f8943"
   }, {
     "url": "index.html",
-    "revision": "0.j5jdhhi7rng"
+    "revision": "0.2ar41qinguo"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -95,7 +95,7 @@ define(['./workbox-f001acab'], (function (workbox) { 'use strict';
       maxAgeSeconds: 2592000
     })]
   }), 'GET');
-  workbox.registerRoute(/^https:\/\/.*\/api\/.*/, new workbox.NetworkFirst({
+  workbox.registerRoute(/^https:\/\/.*\/(chat|login|register|users|health|media)\/.*/, new workbox.NetworkFirst({
     "cacheName": "api-cache",
     "networkTimeoutSeconds": 10,
     plugins: [new workbox.ExpirationPlugin({
