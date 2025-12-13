@@ -26,6 +26,7 @@ import AudioPlayer from './AudioPlayer'
 import PhotoUploader from './PhotoUploader'
 import PhotoDisplay from './PhotoDisplay'
 import VoteMenu from './VoteMenu'
+import ConversationAnalysisModal from './ConversationAnalysisModal'
 import {
   Tooltip,
   TooltipContent,
@@ -69,6 +70,8 @@ export default function ChatPage({
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [wasAtBottom, setWasAtBottom] = useState(true)
   const [showVoteMenu, setShowVoteMenu] = useState<string | null>(null) // messageId or null
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false)
+  const [shouldShowAnalysisButton, setShouldShowAnalysisButton] = useState(false)
 
   // WebSocket connection for real-time updates
   useWebSocket(`${import.meta.env.VITE_API_URL}/ws/chat/${conversation.id}/`, {
@@ -183,6 +186,14 @@ export default function ChatPage({
             : 'Conversation has been unlocked'
           showToast.info(lockMessage)
         }
+
+        // Show analysis button when conversation is locked
+        if (message.is_locked) {
+          setShouldShowAnalysisButton(true)
+        } else {
+          setShouldShowAnalysisButton(false)
+          setShowAnalysisModal(false)
+        }
       } else if (message.type === 'conversation_visibility_changed') {
         // Handle conversation visibility state changes
         setConversation(prev => ({
@@ -252,6 +263,11 @@ export default function ChatPage({
   useEffect(() => {
     onConversationUpdate?.(conversation)
   }, [conversation, onConversationUpdate])
+
+  // Check initial lock state to show analysis button
+  useEffect(() => {
+    setShouldShowAnalysisButton(conversation.is_locked)
+  }, [conversation.is_locked])
 
   // Debug: Log input field state changes
   useEffect(() => {
@@ -513,18 +529,21 @@ export default function ChatPage({
 
   const copyConversationId = async () => {
     try {
-      await navigator.clipboard.writeText(conversation.id || '')
+      // Use current origin for the join link
+      const baseUrl = window.location.origin
+      const link = `${baseUrl}/join/${conversation.id}`
+      await navigator.clipboard.writeText(link)
       setCopied(true)
       showToast.success(
-        'Conversation ID copied!',
-        'Share this ID with others to join.'
+        'Conversation link copied!',
+        'Share it with others to join.'
       )
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
       console.error(error)
       showToast.error(
         'Failed to copy to clipboard',
-        'Please copy the ID manually.'
+        'Please copy the link manually.'
       )
     }
   }
@@ -664,6 +683,31 @@ export default function ChatPage({
           </div>
         </div>
       </div>
+
+      {/* Analysis Button - show when conversation is locked */}
+      {(conversation.is_locked || shouldShowAnalysisButton) && (
+        <div className="bg-primary/10 border-b px-4 py-3 relative z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-primary">
+              <span className="text-lg">✨</span>
+              <div>
+                <p className="font-medium text-sm">Night Analysis Available</p>
+                <p className="text-xs text-muted-foreground">
+                  The conversation has been analyzed. View highlights and summary.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setShowAnalysisModal(true)}
+              variant="outline"
+              size="sm"
+              className="bg-background hover:bg-muted"
+            >
+              View Analysis
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Locked Conversation Header */}
       {!conversation.is_locked && !conversation.is_visible && (
@@ -974,6 +1018,16 @@ export default function ChatPage({
           </Button>
         </form>
       </div>
+
+      {/* Conversation Analysis Modal */}
+      <ConversationAnalysisModal
+        conversation={conversation}
+        currentUser={user}
+        users={users}
+        conversationUserData={conversationUserData}
+        isOpen={showAnalysisModal}
+        onClose={() => setShowAnalysisModal(false)}
+      />
     </div>
   )
 }
