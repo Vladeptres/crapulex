@@ -1,21 +1,19 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Camera, X, Send } from 'lucide-react'
+import { Camera } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 
 interface PhotoUploaderProps {
-  onSendPhoto: (photoFile: File) => void
+  onPhotoSelect: (photoFile: File | null) => void
   disabled?: boolean
   className?: string
 }
 
 export default function PhotoUploader({
-  onSendPhoto,
+  onPhotoSelect,
   disabled = false,
   className = '',
 }: PhotoUploaderProps) {
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,11 +36,7 @@ export default function PhotoUploader({
       return
     }
 
-    setSelectedPhoto(file)
-
-    // Create preview URL
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
+    onPhotoSelect(file)
   }
 
   const handleCameraClick = () => {
@@ -51,75 +45,7 @@ export default function PhotoUploader({
     }
   }
 
-  const handleSendPhoto = () => {
-    if (selectedPhoto) {
-      onSendPhoto(selectedPhoto)
-      clearPhoto()
-    }
-  }
-
-  const clearPhoto = () => {
-    setSelectedPhoto(null)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
-  // Photo preview state (after selection)
-  if (selectedPhoto && previewUrl) {
-    return (
-      <div
-        className={`flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg ${className}`}
-      >
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative">
-            <img
-              src={previewUrl}
-              alt="Selected photo"
-              className="w-16 h-16 object-cover rounded-lg border border-green-300 dark:border-green-700"
-            />
-          </div>
-
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-green-700 dark:text-green-300">
-              Photo selected
-            </span>
-            <span className="text-xs text-green-600 dark:text-green-400">
-              {selectedPhoto.name} ({(selectedPhoto.size / 1024).toFixed(1)} KB)
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={clearPhoto}
-            className="h-8 w-8 p-0"
-            title="Remove photo"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleSendPhoto}
-            disabled={disabled}
-            className="h-8 px-3 gradient-btn text-white"
-            title="Send photo"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  // Initial state (camera button)
+  // Camera button
   return (
     <>
       <Button

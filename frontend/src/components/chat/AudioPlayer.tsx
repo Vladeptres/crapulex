@@ -10,12 +10,12 @@ interface AudioPlayerProps {
 
 export default function AudioPlayer({
   audioUrl,
-  duration,
   className = '',
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [audioDuration, setAudioDuration] = useState(duration || 0)
+  const [audioDuration, setAudioDuration] = useState<number>(0)
+  const [isMetadataLoaded, setIsMetadataLoaded] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -23,7 +23,17 @@ export default function AudioPlayer({
     audioRef.current = audio
 
     const handleLoadedMetadata = () => {
-      setAudioDuration(audio.duration)
+      if (audio.duration && isFinite(audio.duration)) {
+        setAudioDuration(audio.duration)
+        setIsMetadataLoaded(true)
+      }
+    }
+
+    const handleCanPlay = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setAudioDuration(audio.duration)
+        setIsMetadataLoaded(true)
+      }
     }
 
     const handleTimeUpdate = () => {
@@ -44,23 +54,29 @@ export default function AudioPlayer({
     }
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('canplay', handleCanPlay)
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('ended', handleEnded)
     audio.addEventListener('pause', handlePause)
     audio.addEventListener('play', handlePlay)
 
+    // Preload metadata
+    audio.load()
+
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('canplay', handleCanPlay)
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('ended', handleEnded)
       audio.removeEventListener('pause', handlePause)
       audio.removeEventListener('play', handlePlay)
       audio.pause()
+      audioRef.current = null
     }
   }, [audioUrl])
 
   const formatTime = (seconds: number) => {
-    if (isNaN(seconds)) return '0:00'
+    if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return '0:00'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
@@ -126,7 +142,7 @@ export default function AudioPlayer({
           {/* Time display */}
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(audioDuration)}</span>
+            <span>{isMetadataLoaded ? formatTime(audioDuration) : '...'}</span>
           </div>
         </div>
       </div>

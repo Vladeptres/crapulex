@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, ArrowLeft, Copy, Check, ChevronDown } from 'lucide-react'
+import { Send, ArrowLeft, Copy, Check, ChevronDown, X } from 'lucide-react'
 import { showToast } from '@/lib/toast'
 import type {
   UserResponse,
@@ -67,14 +67,35 @@ export default function ChatPage({
   >({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [wasAtBottom, setWasAtBottom] = useState(true)
   const [showVoteMenu, setShowVoteMenu] = useState<string | null>(null) // messageId or null
   const [showAnalysisModal, setShowAnalysisModal] = useState(false)
-  const [shouldShowAnalysisButton, setShouldShowAnalysisButton] = useState(false)
+  const [shouldShowAnalysisButton, setShouldShowAnalysisButton] =
+    useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false)
+  const audioRecorderClearRef = useRef<(() => void) | null>(null)
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      const lineHeight = 24 // approximate line height in pixels
+      const maxRows = 7
+      const maxHeight = lineHeight * maxRows
+      const newHeight = Math.min(textarea.scrollHeight, maxHeight)
+      textarea.style.height = `${newHeight}px`
+    }
+  }, [messageInput])
 
   // WebSocket connection for real-time updates
-  useWebSocket(`${import.meta.env.VITE_API_URL}/ws/chat/${conversation.id}/`, {
+  const wsUrl = import.meta.env.VITE_API_URL?.replace(/^http/, 'ws') || ''
+  useWebSocket(`${wsUrl}/ws/chat/${conversation.id}/`, {
     onMessage: message => {
       // Debug: Check if this is a raw message without type wrapper
       if (!message.type && message.id && message.content) {
@@ -391,12 +412,12 @@ export default function ChatPage({
     await sendMessage()
   }
 
-  const sendMessage = async (audioBlob?: Blob, photoFile?: File) => {
-    if ((messageInput.trim() || audioBlob || photoFile) && !isSending) {
+  const sendMessage = async () => {
+    if ((messageInput.trim() || audioBlob || selectedPhoto) && !isSending) {
       setIsSending(true)
       try {
         const messageData: MessagePost = {
-          content: audioBlob || photoFile ? '' : messageInput.trim(),
+          content: messageInput.trim(),
           conversation_id: conversation.id || '',
           issuer_id: user.id,
         }
@@ -413,8 +434,8 @@ export default function ChatPage({
           formData.append('medias', audioFile)
         }
 
-        if (photoFile) {
-          formData.append('medias', photoFile)
+        if (selectedPhoto) {
+          formData.append('medias', selectedPhoto)
         }
 
         const apiUrl = import.meta.env.VITE_API_URL || ''
@@ -430,44 +451,84 @@ export default function ChatPage({
         )
 
         if (response.ok) {
-          // Message will be added via WebSocket, just clear input
+          // Message will be added via WebSocket, just clear input and media
           setMessageInput('')
+          clearSelectedPhoto()
+          clearAudioRecording()
 
-          // Show success toast for locked conversations or audio messages
-          if (conversation.is_locked || audioBlob) {
+          // Show success toast for locked conversations or media messages
+          if (conversation.is_locked || audioBlob || selectedPhoto) {
+            const messageType = audioBlob
+              ? 'Audio message'
+              : selectedPhoto
+                ? 'Photo'
+                : 'Message'
             showToast.success(
-              audioBlob ? 'Audio message sent!' : 'Message sent!',
+              `${messageType} sent!`,
               audioBlob
                 ? 'Your voice message has been delivered.'
-                : 'Thanks for this message of great value.'
+                : selectedPhoto
+                  ? 'Your photo has been shared.'
+                  : 'Thanks for this message of great value.'
             )
           }
 
           // Call the optional callback
           if (onSendMessage) {
-            onSendMessage(audioBlob ? '[Audio Message]' : messageInput.trim())
+            const content = audioBlob
+              ? '[Audio Message]'
+              : selectedPhoto
+                ? '[Photo]'
+                : messageInput.trim()
+            onSendMessage(content)
           }
         } else {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
       } catch (error) {
         console.error('Failed to send message:', error)
-        showToast.error(
-          audioBlob ? 'Failed to send audio message' : 'Failed to send message',
-          'Please try again.'
-        )
+        const messageType = audioBlob
+          ? 'audio message'
+          : selectedPhoto
+            ? 'photo'
+            : 'message'
+        showToast.error(`Failed to send ${messageType}`, 'Please try again.')
       } finally {
         setIsSending(false)
       }
     }
   }
 
-  const handleSendAudio = async (audioBlob: Blob) => {
-    await sendMessage(audioBlob)
+  const handlePhotoSelect = (photoFile: File | null) => {
+    if (photoFile) {
+      setSelectedPhoto(photoFile)
+      const url = URL.createObjectURL(photoFile)
+      setPhotoPreviewUrl(url)
+    } else {
+      clearSelectedPhoto()
+    }
   }
 
-  const handleSendPhoto = async (photoFile: File) => {
-    await sendMessage(undefined, photoFile)
+  const clearSelectedPhoto = () => {
+    if (photoPreviewUrl) {
+      URL.revokeObjectURL(photoPreviewUrl)
+    }
+    setSelectedPhoto(null)
+    setPhotoPreviewUrl(null)
+  }
+
+  const handleAudioRecorded = (blob: Blob | null) => {
+    if (blob) {
+      setAudioBlob(blob)
+    }
+    setIsRecordingAudio(false)
+  }
+
+  const clearAudioRecording = () => {
+    setAudioBlob(null)
+    if (audioRecorderClearRef.current) {
+      audioRecorderClearRef.current()
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -693,7 +754,8 @@ export default function ChatPage({
               <div>
                 <p className="font-medium text-sm">Night Analysis Available</p>
                 <p className="text-xs text-muted-foreground">
-                  The conversation has been analyzed. View highlights and summary.
+                  The conversation has been analyzed. View highlights and
+                  summary.
                 </p>
               </div>
             </div>
@@ -976,46 +1038,111 @@ export default function ChatPage({
 
       {/* Message Input */}
       <div className="border-t bg-card p-4 relative z-10">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Textarea
-            value={messageInput}
-            onChange={e => {
-              setMessageInput(e.target.value)
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              conversation.is_locked
-                ? 'Conversation is locked. You can only read the content.'
-                : 'Type your message...'
-            }
-            className="flex-1 resize-none min-h-[40px] max-h-32"
-            disabled={isSending || conversation.is_locked}
-            rows={1}
-          />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+          {/* Media Preview Area */}
+          {(selectedPhoto || audioBlob) && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+              {selectedPhoto && photoPreviewUrl && (
+                <div className="flex items-center gap-2 flex-1">
+                  <img
+                    src={photoPreviewUrl}
+                    alt="Selected photo"
+                    className="w-12 h-12 object-cover rounded border"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">Photo selected</span>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedPhoto.name} (
+                      {(selectedPhoto.size / 1024).toFixed(1)} KB)
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearSelectedPhoto}
+                    className="h-8 w-8 p-0 ml-auto"
+                    type="button"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {audioBlob && (
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="w-3 h-3 bg-red-500 rounded-full" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">Audio recorded</span>
+                    <span className="text-xs text-muted-foreground">
+                      Ready to send
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearAudioRecording}
+                    className="h-8 w-8 p-0 ml-auto"
+                    type="button"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Photo Uploader */}
-          <PhotoUploader
-            onSendPhoto={handleSendPhoto}
-            disabled={isSending || conversation.is_locked}
-            className="self-end"
-          />
+          {/* Input Row */}
+          <div className="flex gap-2">
+            <Textarea
+              ref={textareaRef}
+              value={messageInput}
+              onChange={e => {
+                setMessageInput(e.target.value)
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                conversation.is_locked
+                  ? 'Conversation is locked. You can only read the content.'
+                  : selectedPhoto
+                    ? 'Add a caption (optional)...'
+                    : audioBlob
+                      ? 'Add text to your audio message (optional)...'
+                      : 'Type your message...'
+              }
+              className="flex-1 resize-none overflow-y-auto"
+              disabled={isSending || conversation.is_locked}
+              rows={1}
+            />
 
-          {/* Audio Recorder */}
-          <AudioRecorder
-            onSendAudio={handleSendAudio}
-            disabled={isSending || conversation.is_locked}
-            className="self-end"
-          />
+            {/* Photo Uploader */}
+            <PhotoUploader
+              onPhotoSelect={handlePhotoSelect}
+              disabled={isSending || conversation.is_locked || !!selectedPhoto}
+              className="self-end"
+            />
 
-          <Button
-            type="submit"
-            disabled={
-              !messageInput.trim() || isSending || conversation?.is_locked
-            }
-            className="w-9 h-9 p-0 rounded-lg self-end gradient-btn text-white"
-          >
-            <Send className="h-4 w-4 mr-0.5 mt-0.5" />
-          </Button>
+            {/* Audio Recorder */}
+            <AudioRecorder
+              onAudioRecorded={handleAudioRecorded}
+              onClear={clearFn => {
+                audioRecorderClearRef.current = clearFn
+              }}
+              disabled={isSending || conversation.is_locked || !!audioBlob}
+              className="self-end"
+              isRecording={isRecordingAudio}
+            />
+
+            <Button
+              type="submit"
+              disabled={
+                (!messageInput.trim() && !selectedPhoto && !audioBlob) ||
+                isSending ||
+                conversation?.is_locked
+              }
+              className="w-9 h-9 p-0 rounded-lg self-end gradient-btn text-white"
+            >
+              <Send className="h-4 w-4 mr-0.5 mt-0.5" />
+            </Button>
+          </div>
         </form>
       </div>
 

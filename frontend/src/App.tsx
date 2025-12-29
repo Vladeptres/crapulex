@@ -32,7 +32,7 @@ function App() {
     const handleUrlRouting = async () => {
       const path = window.location.pathname
       const joinMatch = path.match(/^\/join\/(.+)$/)
-      
+
       if (joinMatch && user && !currentConversation) {
         const conversationId = joinMatch[1]
         await handleJoinConversationFromUrl(conversationId)
@@ -123,7 +123,9 @@ function App() {
         <div className="h-[100svh] bg-background text-foreground flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>{isJoiningConversation ? 'Joining conversation...' : 'Loading...'}</p>
+            <p>
+              {isJoiningConversation ? 'Joining conversation...' : 'Loading...'}
+            </p>
           </div>
         </div>
         <Toaster />
