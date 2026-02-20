@@ -1,6 +1,8 @@
+import random
 from pathlib import Path
 
 import chat_analyser
+import emoji
 from channels.layers import get_channel_layer
 from django.http import FileResponse, Http404, HttpResponse
 from loguru import logger
@@ -78,6 +80,14 @@ def create_conversation(request, conversation: ConversationCreate):
     try:
         conversation_id = registry.create_conversation(user_id=user_id, conversation_create=conversation)
         logger.info(f"Conversation created with id: {conversation_id}")
+        assigned_emoji = random.choice(list(emoji.EMOJI_DATA.keys()))
+        registry.update_conversation_user(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            smiley=assigned_emoji,
+        )
+        logger.info(f"Assigned random emoji '{assigned_emoji}' to creator {user_id} in conversation {conversation_id}")
+
         created_conversation = registry.get_conversation(conversation_id=conversation_id)
         return 200, ConversationResponse(**created_conversation.model_dump())
     except ValidationError as ve:
@@ -105,143 +115,7 @@ async def join_conversation(request, conversation_id: str):
         assigned_emoji = None
 
         if is_new_user:
-            import random
-
-            # List of fun emojis to randomly assign
-            available_emojis = [
-                "😀",
-                "😃",
-                "😄",
-                "😁",
-                "😆",
-                "😅",
-                "🤣",
-                "😂",
-                "🙂",
-                "🙃",
-                "😉",
-                "😊",
-                "😇",
-                "🥰",
-                "😍",
-                "🤩",
-                "😘",
-                "😗",
-                "😚",
-                "😙",
-                "😋",
-                "😛",
-                "😜",
-                "🤪",
-                "😝",
-                "🤑",
-                "🤗",
-                "🤭",
-                "🤫",
-                "🤔",
-                "🤐",
-                "🤨",
-                "😐",
-                "😑",
-                "😶",
-                "😏",
-                "😒",
-                "🙄",
-                "😬",
-                "🤥",
-                "😌",
-                "😔",
-                "😪",
-                "🤤",
-                "😴",
-                "😷",
-                "🤒",
-                "🤕",
-                "🤢",
-                "🤮",
-                "🤧",
-                "🥵",
-                "🥶",
-                "🥴",
-                "😵",
-                "🤯",
-                "🤠",
-                "🥳",
-                "😎",
-                "🤓",
-                "🧐",
-                "😕",
-                "😟",
-                "🙁",
-                "☹️",
-                "😮",
-                "😯",
-                "😲",
-                "😳",
-                "🥺",
-                "😦",
-                "😧",
-                "😨",
-                "😰",
-                "😥",
-                "😢",
-                "😭",
-                "😱",
-                "😖",
-                "😣",
-                "😞",
-                "😓",
-                "😩",
-                "😫",
-                "🥱",
-                "😤",
-                "😡",
-                "😠",
-                "🤬",
-                "😈",
-                "👿",
-                "💀",
-                "☠️",
-                "💩",
-                "🤡",
-                "👹",
-                "👺",
-                "👻",
-                "👽",
-                "👾",
-                "🤖",
-                "🎃",
-                "😺",
-                "😸",
-                "😹",
-                "😻",
-                "😼",
-                "😽",
-                "🙀",
-                "😿",
-                "😾",
-                "🐶",
-                "🐱",
-                "🐭",
-                "🐹",
-                "🐰",
-                "🦊",
-                "🐻",
-                "🐼",
-                "🐨",
-                "🐯",
-                "🦁",
-                "🐮",
-                "🐷",
-                "🐸",
-                "🐵",
-                "🙈",
-                "🙉",
-                "🙊",
-                "🐒",
-            ]
-
-            assigned_emoji = random.choice(available_emojis)
+            assigned_emoji = random.choice(list(emoji.EMOJI_DATA.keys()))
 
             # Update user with random emoji
             registry.update_conversation_user(
