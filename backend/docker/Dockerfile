@@ -23,6 +23,7 @@ WORKDIR /app
 # Copy dependency files first (for better layer caching)
 COPY ../pyproject.toml ../uv.lock* ./
 COPY ../README.md ./README.md
+COPY ../chat_analyser-0.1.0-py3-none-any.whl ./chat_analyser-0.1.0-py3-none-any.whl
 
 # Install Python dependencies
 RUN uv sync --frozen --no-dev

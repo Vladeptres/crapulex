@@ -2,7 +2,7 @@ from pathlib import Path
 
 import chat_analyser
 from channels.layers import get_channel_layer
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from loguru import logger
 from ninja import File, NinjaAPI
 from ninja.files import UploadedFile
@@ -671,7 +671,7 @@ async def update_conversation_user(
 
 @api.get("media/{media_id}")
 def serve_media(request, media_id: str):
-    """Serve locally stored media files"""
+    """Serve media files from local storage or MinIO"""
     try:
         # Find the message containing this media
         message = registry.find_message_by_media_id(media_id)
@@ -681,6 +681,8 @@ def serve_media(request, media_id: str):
         # Find the specific media in the message
         for media in message.medias_metadatas:
             if media.id == media_id:
+                file_extension = Path(media.key).suffix if media.key else ""
+
                 if media.uri.startswith("file://"):
                     file_path = Path(media.uri[7:])  # Remove "file://" prefix
                     if file_path.exists():
@@ -690,7 +692,17 @@ def serve_media(request, media_id: str):
                             filename=f"{media_id}{file_path.suffix}",
                         )
 
+                elif media.uri.startswith("s3://"):
+                    # Stream from MinIO/S3 via the backend
+                    content = registry.medias_store.download_media(media)
+                    if content:
+                        response = HttpResponse(content, content_type=f"{media.type}/*")
+                        response["Content-Disposition"] = f'inline; filename="{media_id}{file_extension}"'
+                        return response
+
         raise Http404("Media not found")
+    except Http404:
+        raise
     except Exception as e:
         logger.error(f"Error serving media {media_id}: {e}")
         raise Http404("Media not found")
@@ -720,7 +732,10 @@ def get_conversation_users(request, conversation_id: str):
         return 500, {"error": str(e)}
 
 
-@api.get("chat/{conversation_id}/analyse", response={200: chat_analyser.api.models.ConversationAnalysisResponse, 500: ErrorResponse})
+@api.get(
+    "chat/{conversation_id}/analyse",
+    response={200: chat_analyser.api.models.ConversationAnalysisResponse, 500: ErrorResponse},
+)
 def analyse_chat(request, conversation_id: str):
     try:
         logger.info(f"Received request to analyse conversation {conversation_id}.")
@@ -734,7 +749,7 @@ def analyse_chat(request, conversation_id: str):
             )
             conversation.analysis = analyse.model_dump()
             registry.update_conversation(conversation_id=conversation_id, conversation_update=conversation)
-        
+
         logger.info(f"Analysed conversation {conversation_id}.")
         return 200, chat_analyser.api.models.ConversationAnalysisResponse.model_validate(conversation.analysis)
     except Exception as e:

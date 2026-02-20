@@ -35,6 +35,15 @@ import {
 } from '@/components/ui/tooltip'
 import { useWebSocket } from '@/hooks/useWebSocket'
 
+const resolveMediaUrl = (url: string): string => {
+  if (!url) return url
+  // If it's already an absolute URL, use as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  // Relative path from backend — prepend API base URL
+  const apiUrl = import.meta.env.VITE_API_URL || ''
+  return `${apiUrl}${url.startsWith('/') ? '' : '/'}${url}`
+}
+
 interface ChatPageProps {
   conversation: ConversationResponse
   user: UserResponse
@@ -922,7 +931,9 @@ export default function ChatPage({
                               .map(imageMedia => (
                                 <PhotoDisplay
                                   key={imageMedia.id}
-                                  src={imageMedia.presigned_url}
+                                  src={resolveMediaUrl(
+                                    imageMedia.presigned_url
+                                  )}
                                   alt="Shared photo"
                                   className="max-w-sm"
                                 />
@@ -934,7 +945,9 @@ export default function ChatPage({
                               .map(audioMedia => (
                                 <AudioPlayer
                                   key={audioMedia.id}
-                                  audioUrl={audioMedia.presigned_url}
+                                  audioUrl={resolveMediaUrl(
+                                    audioMedia.presigned_url
+                                  )}
                                   className="max-w-xs"
                                 />
                               ))}

@@ -11,7 +11,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, tag
 from moto import mock_aws
 
-from core.config import S3_BUCKET_NAME
+from core.config import MEDIA_STORAGE_URI
+
+
+def _bucket_name_from_uri(uri: str) -> str:
+    """Derive bucket name from MEDIA_STORAGE_URI, matching MediasStore logic."""
+    if uri.startswith("s3://"):
+        return uri[len("s3://") :]
+    return uri.strip("/").replace("/", "-") or "media-files"
 
 
 def set_up_mock_s3():
@@ -22,8 +29,9 @@ def set_up_mock_s3():
         aws_secret_access_key="test",  # noqa: S106
     )
     # Create the mock bucket
+    bucket_name = _bucket_name_from_uri(MEDIA_STORAGE_URI)
     s3_client.create_bucket(
-        Bucket=S3_BUCKET_NAME,
+        Bucket=bucket_name,
         CreateBucketConfiguration={"LocationConstraint": "eu-north-1"},
     )
 

@@ -35,14 +35,20 @@ USERS_COLLECTION = "users"
 MESSAGES_COLLECTION = "messages"
 
 # Media storage
-MEDIA_STORAGE_PATH = os.environ.get("MEDIA_STORAGE_PATH", "media_files")
+# MEDIA_STORAGE_URI determines the storage backend:
+#   - "s3://bucket-name"  -> AWS S3 (requires S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)
+#   - "/some/local/path"  -> Local MinIO instance (requires MINIO_ROOT_USER, MINIO_ROOT_PASSWORD)
+MEDIA_STORAGE_URI = os.environ.get("MEDIA_STORAGE_URI", "media_files")
 
-# AWS S3 Configuration
-S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "bourracho-test")
+# AWS S3 Configuration (used when MEDIA_STORAGE_URI starts with s3://)
 S3_REGION = os.environ.get("S3_REGION", "eu-north-1")
-S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "https://s3.eu-north-1.amazonaws.com")
 S3_ACCESS_KEY_ID = os.environ.get("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.environ.get("S3_SECRET_ACCESS_KEY", "")
+
+# MinIO Configuration (used when MEDIA_STORAGE_URI is a local path)
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "http://localhost:9000")
+MINIO_ROOT_USER = os.environ.get("MINIO_ROOT_USER", "minioadmin")
+MINIO_ROOT_PASSWORD = os.environ.get("MINIO_ROOT_PASSWORD", "minioadmin")
 
 
 def get_redis_client():

@@ -27,6 +27,22 @@ services:
     networks:
       - ${NETWORK_NAME}
 
+  minio:
+    image: minio/minio:latest
+    container_name: crapulex-minio-${CONTAINER_SUFFIX}
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data_${CONTAINER_SUFFIX}:/data
+    networks:
+      - ${NETWORK_NAME}
+
   backend:
     build:
       context: ..
@@ -50,24 +66,32 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      # Media storage: "s3://bucket-name" for AWS S3, or a local path for MinIO
+      - MEDIA_STORAGE_URI=${MEDIA_STORAGE_URI:-media_files}
+      # AWS S3 credentials (only needed when MEDIA_STORAGE_URI starts with s3://)
+      - S3_REGION=${S3_REGION:-eu-north-1}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
+      # MinIO credentials (only needed when MEDIA_STORAGE_URI is a local path)
+      - MINIO_ENDPOINT=http://crapulex-minio-${CONTAINER_SUFFIX}:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
       - "${API_PORT}:${API_PORT}"
     depends_on:
       - mongodb
       - redis
+      - minio
     networks:
       - ${NETWORK_NAME}
-    volumes:
-      - ../media_files:/app/media_files
 
 volumes:
   mongodb_data_dev:
   mongodb_data_prod:
   redis_data_dev:
   redis_data_prod:
+  minio_data_dev:
+  minio_data_prod:
 
 networks:
   bourracho-dev-network:

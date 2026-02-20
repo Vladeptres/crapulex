@@ -50,7 +50,7 @@ Before you begin, ensure you have the following installed:
    **Key Environment Variables:**
    - `MONGO_DB_HOST`, `MONGO_DB_PORT`, `MONGO_DB_USERNAME`, `MONGO_DB_PASSWORD`: MongoDB connection
    - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis connection
-   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET_NAME`: S3 storage
+   - `MEDIA_STORAGE_URI`: Media storage (`s3://bucket` for AWS S3, or local path for MinIO)
    - `DJANGO_SECRET_KEY`: Django secret key for security
    - `DEBUG`: Set to `True` for development, `False` for production
 

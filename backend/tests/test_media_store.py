@@ -47,6 +47,8 @@ class TestMediasStore:
         with patch("core.medias_store.client", return_value=mock_s3_client):
             store = MediasStore()
             store.s3_client = mock_s3_client
+            store._bucket_name = "test-bucket"
+            store._backend = "minio"
             yield store
 
     @pytest.fixture
@@ -58,14 +60,14 @@ class TestMediasStore:
             content_type="image/jpeg",
         )
 
-    def test_init_creates_s3_client(self):
-        """Test that MediasStore creates S3 client on initialization."""
+    def test_init_creates_s3_client_for_aws(self):
+        """Test that MediasStore creates S3 client for AWS when URI starts with s3://."""
         with patch("core.medias_store.client") as mock_client_factory:
             mock_client = MagicMock()
             mock_client_factory.return_value = mock_client
 
             with patch("core.medias_store.config") as mock_config:
-                mock_config.S3_ENDPOINT_URL = "http://localhost:9000"
+                mock_config.MEDIA_STORAGE_URI = "s3://my-bucket"
                 mock_config.S3_REGION = "us-east-1"
                 mock_config.S3_ACCESS_KEY_ID = "test_key"
                 mock_config.S3_SECRET_ACCESS_KEY = "test_secret"
@@ -74,11 +76,38 @@ class TestMediasStore:
 
                 mock_client_factory.assert_called_once_with(
                     "s3",
-                    endpoint_url="http://localhost:9000",
+                    endpoint_url="https://s3.us-east-1.amazonaws.com",
                     region_name="us-east-1",
                     aws_access_key_id="test_key",
                     aws_secret_access_key="test_secret",
                 )
+                assert store._backend == "s3"
+                assert store._bucket_name == "my-bucket"
+                assert store.s3_client == mock_client
+
+    def test_init_creates_s3_client_for_minio(self):
+        """Test that MediasStore creates S3 client for MinIO when URI is a local path."""
+        with patch("core.medias_store.client") as mock_client_factory:
+            mock_client = MagicMock()
+            mock_client_factory.return_value = mock_client
+
+            with patch("core.medias_store.config") as mock_config:
+                mock_config.MEDIA_STORAGE_URI = "/some/local/media_files"
+                mock_config.MINIO_ENDPOINT = "http://localhost:9000"
+                mock_config.MINIO_ROOT_USER = "minioadmin"
+                mock_config.MINIO_ROOT_PASSWORD = "minioadmin"
+
+                store = MediasStore()
+
+                mock_client_factory.assert_called_once_with(
+                    "s3",
+                    endpoint_url="http://localhost:9000",
+                    region_name="us-east-1",
+                    aws_access_key_id="minioadmin",
+                    aws_secret_access_key="minioadmin",
+                )
+                assert store._backend == "minio"
+                assert store._bucket_name == "media-files"
                 assert store.s3_client == mock_client
 
     def test_upload_media_creates_metadata(self, media_store, mock_uploaded_file):
@@ -86,46 +115,38 @@ class TestMediasStore:
         conversation_id = "test_conv_123"
         issuer_id = "user_456"
 
-        with patch("core.medias_store.config") as mock_config:
-            mock_config.S3_BUCKET_NAME = "test-bucket"
-            mock_config.BUCKET_NAME = "test-bucket"
+        metadata = media_store.upload_media(
+            uploaded_file=mock_uploaded_file,
+            conversation_id=conversation_id,
+            issuer_id=issuer_id,
+        )
 
-            metadata = media_store.upload_media(
-                uploaded_file=mock_uploaded_file,
-                conversation_id=conversation_id,
-                issuer_id=issuer_id,
-            )
-
-            assert isinstance(metadata, MediaMetadata)
-            assert metadata.size == len(b"fake image content")
-            assert metadata.type == "image"
-            assert metadata.issuer_id == issuer_id
-            assert metadata.uri.startswith(f"s3://test-bucket/{conversation_id}/")
-            assert metadata.key.startswith(f"{conversation_id}/")
-            assert metadata.key.endswith(".jpg")
-            assert metadata.timestamp is not None
+        assert isinstance(metadata, MediaMetadata)
+        assert metadata.size == len(b"fake image content")
+        assert metadata.type == "image"
+        assert metadata.issuer_id == issuer_id
+        assert metadata.uri.startswith(f"s3://test-bucket/{conversation_id}/")
+        assert metadata.key.startswith(f"{conversation_id}/")
+        assert metadata.key.endswith(".jpg")
+        assert metadata.timestamp is not None
 
     def test_upload_media_uploads_to_s3(self, media_store, mock_uploaded_file):
         """Test that upload_media uploads file to S3."""
         conversation_id = "test_conv_123"
         issuer_id = "user_456"
 
-        with patch("core.medias_store.config") as mock_config:
-            mock_config.S3_BUCKET_NAME = "test-bucket"
-            mock_config.BUCKET_NAME = "test-bucket"
+        media_store.upload_media(
+            uploaded_file=mock_uploaded_file,
+            conversation_id=conversation_id,
+            issuer_id=issuer_id,
+        )
 
-            media_store.upload_media(
-                uploaded_file=mock_uploaded_file,
-                conversation_id=conversation_id,
-                issuer_id=issuer_id,
-            )
-
-            # Verify S3 upload was called
-            media_store.s3_client.upload_fileobj.assert_called_once()
-            call_args = media_store.s3_client.upload_fileobj.call_args
-            assert call_args[1]["Fileobj"] == mock_uploaded_file
-            assert call_args[1]["Bucket"] == "test-bucket"
-            assert call_args[1]["Key"].startswith(f"{conversation_id}/")
+        # Verify S3 upload was called
+        media_store.s3_client.upload_fileobj.assert_called_once()
+        call_args = media_store.s3_client.upload_fileobj.call_args
+        assert call_args[1]["Fileobj"] == mock_uploaded_file
+        assert call_args[1]["Bucket"] == "test-bucket"
+        assert call_args[1]["Key"].startswith(f"{conversation_id}/")
 
     def test_upload_media_handles_s3_error(self, media_store, mock_uploaded_file):
         """Test that upload_media handles S3 upload errors properly."""
@@ -135,15 +156,12 @@ class TestMediasStore:
         # Mock S3 client to raise an OSError
         media_store.s3_client.upload_fileobj.side_effect = OSError("S3 upload failed")
 
-        with patch("core.medias_store.config") as mock_config:
-            mock_config.S3_BUCKET_NAME = "test-bucket"
-
-            with pytest.raises(OSError, match="Failed to store media file"):
-                media_store.upload_media(
-                    uploaded_file=mock_uploaded_file,
-                    conversation_id=conversation_id,
-                    issuer_id=issuer_id,
-                )
+        with pytest.raises(OSError, match="Failed to store media file"):
+            media_store.upload_media(
+                uploaded_file=mock_uploaded_file,
+                conversation_id=conversation_id,
+                issuer_id=issuer_id,
+            )
 
     def test_determine_media_type_by_content_type(self, media_store):
         """Test media type determination by content type."""
@@ -194,17 +212,14 @@ class TestMediasStore:
             timestamp=datetime.now(),  # noqa: DTZ005
         )
 
-        with patch("core.medias_store.config") as mock_config:
-            mock_config.S3_BUCKET_NAME = "test-bucket"
+        url = media_store.generate_presigned_url(metadata, expiration=3600)
 
-            url = media_store.generate_presigned_url(metadata, expiration=3600)
-
-            assert url == "https://example.com/presigned-url"
-            media_store.s3_client.generate_presigned_url.assert_called_once_with(
-                "get_object",
-                Params={"Bucket": "test-bucket", "Key": "conv123/file.jpg"},
-                ExpiresIn=3600,
-            )
+        assert url == "https://example.com/presigned-url"
+        media_store.s3_client.generate_presigned_url.assert_called_once_with(
+            "get_object",
+            Params={"Bucket": "test-bucket", "Key": "conv123/file.jpg"},
+            ExpiresIn=3600,
+        )
 
     def test_generate_presigned_url_client_error(self, media_store):
         """Test generate_presigned_url handles ClientError."""
@@ -224,12 +239,9 @@ class TestMediasStore:
             operation_name="GetObject",
         )
 
-        with patch("core.medias_store.config") as mock_config:
-            mock_config.S3_BUCKET_NAME = "test-bucket"
+        url = media_store.generate_presigned_url(metadata)
 
-            url = media_store.generate_presigned_url(metadata)
-
-            assert url is None
+        assert url is None
 
     def test_get_file_extension(self, media_store):
         """Test _get_file_extension method."""

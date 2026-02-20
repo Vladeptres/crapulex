@@ -76,8 +76,8 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_URLS_REGEX = r"^.*$"  # Apply CORS to all URLs
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
-
+print("Allowing hosts: ", ALLOWED_HOSTS)
+print("Allowing origins: ", CORS_ALLOWED_ORIGINS)
 # Application definition
 
 INSTALLED_APPS = [
@@ -180,6 +180,10 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# File upload settings - mobile phone photos can be 5-15MB+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB (default is 2.5MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB
 
 # CORS settings for production and development
 # Redis configuration for Django Channels
