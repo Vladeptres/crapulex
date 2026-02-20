@@ -88,6 +88,27 @@ export default function ChatPage({
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [isRecordingAudio, setIsRecordingAudio] = useState(false)
   const audioRecorderClearRef = useRef<(() => void) | null>(null)
+  const [longPressMessageId, setLongPressMessageId] = useState<string | null>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reactionsRef = useRef<HTMLDivElement | null>(null)
+
+  // Dismiss reaction menu on outside click/touch
+  useEffect(() => {
+    const handleOutsideInteraction = (e: MouseEvent | TouchEvent) => {
+      if (
+        reactionsRef.current &&
+        !reactionsRef.current.contains(e.target as Node)
+      ) {
+        setLongPressMessageId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideInteraction)
+    document.addEventListener('touchstart', handleOutsideInteraction)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideInteraction)
+      document.removeEventListener('touchstart', handleOutsideInteraction)
+    }
+  }, [])
 
   // Auto-resize textarea based on content
   useEffect(() => {
@@ -823,18 +844,18 @@ export default function ChatPage({
           groupMessages(messages || []).map((group, groupIndex) => (
             <div
               key={`${group.userId}-${group.timestamp}`}
-              className={`group flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
+              className={`flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
             >
               <div
                 className={`flex items-end gap-2 ${group.userId === user.id ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {/* Avatar or Smiley - only show on the last message of the group */}
+                {/* Avatar or Smiley */}
                 {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div
-                          className={`h-6 w-6 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all rounded-full flex items-center justify-center ${!conversation.is_visible ? 'blur-xs' : ''}`}
+                          className={`h-6 w-6 flex-shrink-0 self-end cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all rounded-full flex items-center justify-center ${!conversation.is_visible ? 'blur-xs' : ''}`}
                         >
                           {conversationUserData[group.userId]?.smiley ? (
                             <span className="text-lg leading-none">
@@ -873,163 +894,207 @@ export default function ChatPage({
 
                 {/* Message Group Content */}
                 <div className="flex flex-col gap-1">
-                  {group.messages.map(message => (
-                    <div
-                      key={message.id}
-                      className={`flex flex-col ${group.userId === user.id ? 'items-end' : 'items-start'}`}
-                    >
-                      {/* Vote Menu - above message content when conversation is locked */}
-                      {showVoteMenu === message.id &&
-                        conversation.is_locked && (
+                  {group.messages.map(message => {
+                    const hasMedia =
+                      message.medias_metadatas &&
+                      message.medias_metadatas.length > 0
+                    const imageMedias = hasMedia
+                      ? (message.medias_metadatas || []).filter(
+                          media => media.type === 'image'
+                        )
+                      : []
+                    const audioMedias = hasMedia
+                      ? (message.medias_metadatas || []).filter(
+                          media => media.type === 'audio'
+                        )
+                      : []
+                    const hasTextContent = !!message.content
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex flex-col ${group.userId === user.id ? 'items-end' : 'items-start'}`}
+                        onTouchStart={() => {
+                          longPressTimerRef.current = setTimeout(() => {
+                            setLongPressMessageId(message.id)
+                          }, 500)
+                        }}
+                        onTouchEnd={() => {
+                          if (longPressTimerRef.current) {
+                            clearTimeout(longPressTimerRef.current)
+                            longPressTimerRef.current = null
+                          }
+                        }}
+                        onTouchMove={() => {
+                          if (longPressTimerRef.current) {
+                            clearTimeout(longPressTimerRef.current)
+                            longPressTimerRef.current = null
+                          }
+                        }}
+                      >
+                        {/* Vote Menu - above message content when conversation is locked */}
+                        {showVoteMenu === message.id &&
+                          conversation.is_locked && (
+                            <div
+                              className={`mb-2 ${group.userId === user.id ? 'flex justify-end' : 'flex justify-start'}`}
+                            >
+                              <VoteMenu
+                                message={message}
+                                conversation={conversation}
+                                currentUser={user}
+                                users={users}
+                                conversationUserData={conversationUserData}
+                                onVote={handleVote}
+                                className="max-w-xs"
+                              />
+                            </div>
+                          )}
+
+                        {/* Vote Button - only show when conversation is locked */}
+                        {conversation.is_locked && (
                           <div
-                            className={`mb-2 ${group.userId === user.id ? 'flex justify-end' : 'flex justify-start'}`}
+                            className={`flex gap-1 mb-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
                           >
-                            <VoteMenu
-                              message={message}
-                              conversation={conversation}
-                              currentUser={user}
-                              users={users}
-                              conversationUserData={conversationUserData}
-                              onVote={handleVote}
-                              className="max-w-xs"
-                            />
+                            <button
+                              onClick={() =>
+                                setShowVoteMenu(
+                                  showVoteMenu === message.id
+                                    ? null
+                                    : message.id
+                                )
+                              }
+                              className="opacity-0 hover:opacity-100 transition-opacity px-2 py-1 rounded-full hover:bg-muted text-xs font-medium"
+                            >
+                              🗳️ Vote
+                            </button>
                           </div>
                         )}
 
-                      {/* Vote Button - only show when conversation is locked */}
-                      {conversation.is_locked && (
-                        <div
-                          className={`flex gap-1 mb-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <button
-                            onClick={() =>
-                              setShowVoteMenu(
-                                showVoteMenu === message.id ? null : message.id
-                              )
-                            }
-                            className="opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity px-2 py-1 rounded-full hover:bg-muted text-xs font-medium"
+                        {/* Media displayed without bubble container */}
+                        {hasMedia && (
+                          <div
+                            className={`space-y-2 ${!conversation.is_visible ? 'blur-xs' : ''}`}
                           >
-                            🗳️ Vote
-                          </button>
-                        </div>
-                      )}
-
-                      <div
-                        className={`rounded-lg px-4 py-2 ${
-                          group.userId === user.id
-                            ? 'gradient-btn text-white'
-                            : 'bg-muted'
-                        } ${!conversation.is_visible ? 'blur-xs' : ''}`}
-                      >
-                        {/* Media messages */}
-                        {message.medias_metadatas &&
-                        message.medias_metadatas.length > 0 ? (
-                          <div className="space-y-2">
                             {/* Photo messages */}
-                            {(message.medias_metadatas || [])
-                              .filter(media => media.type === 'image')
-                              .map(imageMedia => (
-                                <PhotoDisplay
-                                  key={imageMedia.id}
-                                  src={resolveMediaUrl(
-                                    imageMedia.presigned_url
-                                  )}
-                                  alt="Shared photo"
-                                  className="max-w-sm"
-                                />
-                              ))}
+                            {imageMedias.map(imageMedia => (
+                              <PhotoDisplay
+                                key={imageMedia.id}
+                                src={resolveMediaUrl(
+                                  imageMedia.presigned_url
+                                )}
+                                alt="Shared photo"
+                                className="max-w-sm"
+                              />
+                            ))}
 
                             {/* Audio messages */}
-                            {(message.medias_metadatas || [])
-                              .filter(media => media.type === 'audio')
-                              .map(audioMedia => (
-                                <AudioPlayer
-                                  key={audioMedia.id}
-                                  audioUrl={resolveMediaUrl(
-                                    audioMedia.presigned_url
-                                  )}
-                                  className="max-w-xs"
-                                />
-                              ))}
+                            {audioMedias.map(audioMedia => (
+                              <AudioPlayer
+                                key={audioMedia.id}
+                                audioUrl={resolveMediaUrl(
+                                  audioMedia.presigned_url
+                                )}
+                                className="max-w-xs"
+                              />
+                            ))}
+                          </div>
+                        )}
 
-                            {message.content && (
-                              <p className="text-sm break-words whitespace-pre-wrap mt-2">
+                        {/* Text content in bubble */}
+                        {(hasTextContent || !hasMedia) && (
+                          <div
+                            className={`rounded-lg px-4 py-2 ${hasMedia ? 'mt-1' : ''} ${
+                              group.userId === user.id
+                                ? 'gradient-btn text-white'
+                                : 'bg-muted'
+                            } ${!conversation.is_visible ? 'blur-xs' : ''}`}
+                          >
+                            <div className="flex items-baseline gap-8 min-w-0">
+                              <p className="text-sm break-words whitespace-pre-wrap">
                                 {message.content}
                               </p>
-                            )}
-                            {message.timestamp && (
-                              <span className="text-xs opacity-30 block mt-2">
-                                {formatTime(message.timestamp)}
-                              </span>
-                            )}
+                              {message.timestamp && (
+                                <span className="text-xs opacity-30 flex-shrink-0">
+                                  {formatTime(message.timestamp)}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        ) : (
-                          /* Text messages */
-                          <div className="flex items-baseline gap-8 min-w-0">
-                            <p className="text-sm break-words whitespace-pre-wrap">
-                              {message.content}
-                            </p>
-                            {message.timestamp && (
-                              <span className="text-xs opacity-30 flex-shrink-0">
-                                {formatTime(message.timestamp)}
-                              </span>
+                        )}
+
+                        {/* Timestamp for media-only messages */}
+                        {hasMedia && !hasTextContent && message.timestamp && (
+                          <span className="text-xs opacity-30 mt-1">
+                            {formatTime(message.timestamp)}
+                          </span>
+                        )}
+
+                        {/* Reactions */}
+                        {message.reacts && message.reacts.length > 0 && (
+                          <div
+                            className={`flex flex-wrap gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                          >
+                            {Array.from(
+                              new Set(
+                                (message.reacts || []).map(r => r.emoji)
+                              )
+                            ).map(emoji => {
+                              const count = getReactionCount(message, emoji)
+                              const userReacted = hasUserReacted(
+                                message,
+                                emoji
+                              )
+                              return (
+                                <button
+                                  key={emoji}
+                                  onClick={() =>
+                                    handleReaction(message.id, emoji)
+                                  }
+                                  disabled={conversation.is_locked}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
+                                    userReacted
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted hover:bg-muted/80'
+                                  } ${conversation.is_locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                >
+                                  <span>{emoji}</span>
+                                  <span>{count}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {/* Add Reaction Buttons - show on long press */}
+                        {longPressMessageId === message.id && (
+                          <div
+                            ref={reactionsRef}
+                            className={`flex gap-1 mt-1 bg-card shadow-lg rounded-full px-2 py-1 border ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                          >
+                            {['🥵', '💖', '😎', '👅', '💦', '🦄'].map(
+                              emoji => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => {
+                                    handleReaction(message.id, emoji)
+                                    setLongPressMessageId(null)
+                                  }}
+                                  disabled={conversation.is_locked}
+                                  className={`p-1 rounded-full text-sm transition-colors ${
+                                    conversation.is_locked
+                                      ? 'cursor-not-allowed opacity-50'
+                                      : 'active:bg-muted cursor-pointer'
+                                  }`}
+                                >
+                                  {emoji}
+                                </button>
+                              )
                             )}
                           </div>
                         )}
                       </div>
-
-                      {/* Reactions */}
-                      {message.reacts && message.reacts.length > 0 && (
-                        <div
-                          className={`flex flex-wrap gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
-                        >
-                          {Array.from(
-                            new Set((message.reacts || []).map(r => r.emoji))
-                          ).map(emoji => {
-                            const count = getReactionCount(message, emoji)
-                            const userReacted = hasUserReacted(message, emoji)
-                            return (
-                              <button
-                                key={emoji}
-                                onClick={() =>
-                                  handleReaction(message.id, emoji)
-                                }
-                                disabled={conversation.is_locked}
-                                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
-                                  userReacted
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted hover:bg-muted/80'
-                                } ${conversation.is_locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                              >
-                                <span>{emoji}</span>
-                                <span>{count}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-
-                      {/* Add Reaction Buttons - only show on hover */}
-                      <div
-                        className={`flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
-                      >
-                        {['👍', '❤️', '😂', '😮', '😢', '😡'].map(emoji => (
-                          <button
-                            key={emoji}
-                            onClick={() => handleReaction(message.id, emoji)}
-                            disabled={conversation.is_locked}
-                            className={`p-1 rounded-full text-sm transition-colors ${
-                              conversation.is_locked
-                                ? 'cursor-not-allowed opacity-50 hover:bg-transparent'
-                                : 'hover:bg-muted cursor-pointer'
-                            }`}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
