@@ -1195,9 +1195,9 @@ export default function ChatPage({
                       ? 'Add text to your audio message (optional)...'
                       : 'Type your message...'
               }
-              className="flex-1 resize-none overflow-y-auto"
+              className="flex-1 resize-none overflow-y-auto min-h-0 field-sizing-fixed"
               disabled={isSending || conversation.is_locked}
-              rows={1}
+              rows={Math.min(7, Math.max(1, messageInput.split('\n').length))}
             />
 
             {/* Photo Uploader */}
