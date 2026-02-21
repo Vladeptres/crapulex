@@ -18,6 +18,7 @@ from api.models import (
     ConversationUserResponse,
     ConversationUserUpdate,
     ErrorResponse,
+    GoogleAuthRequest,
     MessagePost,
     MessageResponse,
     MessageUpdate,
@@ -70,6 +71,43 @@ def login(request, user_credentials: UserCredentials):
         return 401, {"error": f"Username {user_credentials.username} not found in database"}
     except Exception as e:
         logger.error(f"Unexpected error during user login: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.post("google-auth/", response={200: UserResponse, 401: ErrorResponse, 500: ErrorResponse})
+def google_auth(request, google_auth_request: GoogleAuthRequest):
+    logger.info("Received Google OAuth2 authentication request.")
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+
+        from core.config import GOOGLE_CLIENT_ID
+
+        if not GOOGLE_CLIENT_ID:
+            logger.error("GOOGLE_CLIENT_ID is not configured")
+            return 500, {"error": "Google authentication is not configured on the server"}
+
+        idinfo = id_token.verify_oauth2_token(
+            google_auth_request.credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+
+        google_id = idinfo["sub"]
+        email = idinfo.get("email", "")
+        name = idinfo.get("name")
+
+        if not email:
+            return 401, {"error": "Google account does not have an email address"}
+
+        user = registry.authenticate_google_user(google_id=google_id, email=email, name=name)
+        logger.info(f"Google user authenticated: {user.id} ({email})")
+        return 200, UserResponse(id=user.id, username=user.username, pseudo=user.pseudo, location=user.location)
+    except ValueError as e:
+        logger.error(f"Invalid Google token: {e}")
+        return 401, {"error": "Invalid Google authentication token"}
+    except Exception as e:
+        logger.error(f"Unexpected error during Google authentication: {e}")
         return 500, {"error": str(e)}
 
 

@@ -7,7 +7,9 @@ from pydantic import BaseModel
 class User(BaseModel):
     id: str
     username: str
-    password_hash: str
+    password_hash: str | None = None
+    auth_provider: str = "local"  # "local" or "google"
+    google_id: str | None = None
     pseudo: str | None = None
     location: str | None = None
 

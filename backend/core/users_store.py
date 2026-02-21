@@ -29,6 +29,9 @@ class UsersStore:
             return None
         user = User.model_validate(db_user)
         logger.info(f"User found with username {username}")
+        if user.auth_provider != "local" or not user.password_hash:
+            logger.info(f"User {username} uses {user.auth_provider} auth, password login not allowed")
+            return None
         if not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
             logger.info(f"Password check failed for user {username}")
             return None
@@ -50,6 +53,34 @@ class UsersStore:
             logger.info(f"No user found with id {user_id}")
             return None
         return User.model_validate(user)
+
+    @logger.catch
+    def find_by_google_id(self, google_id: str) -> User | None:
+        db_user = self.users_collection.find_one({"google_id": google_id})
+        if not db_user:
+            return None
+        return User.model_validate(db_user)
+
+    @logger.catch
+    def find_by_username(self, username: str) -> User | None:
+        db_user = self.users_collection.find_one({"username": username})
+        if not db_user:
+            return None
+        return User.model_validate(db_user)
+
+    @logger.catch
+    def create_google_user(self, google_id: str, email: str, name: str | None = None) -> User:
+        user = User(
+            id=str(uuid.uuid4())[:6],
+            username=email,
+            password_hash=None,
+            auth_provider="google",
+            google_id=google_id,
+            pseudo=name,
+        )
+        self.users_collection.insert_one(user.model_dump())
+        logger.info(f"Created Google user with email {email}")
+        return user
 
     @logger.catch
     def get_users(self, user_ids: list[str]) -> list[User]:

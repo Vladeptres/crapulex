@@ -21,6 +21,7 @@ dependencies = [
     "django-rest-swagger>=2.2.0",
     "dotenv>=0.9.9",
     "emoji>=2.15.0",
+    "google-auth>=2.29.0",
     "loguru>=0.7.3",
     "mongomock>=4.3.0",
     "moto[all]>=5.1.8",

@@ -10,6 +10,11 @@ class UserCredentials(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    """Schema for Google OAuth2 authentication"""
+    credential: str  # Google ID token
+
+
 class MessagePost(BaseModel):
     """Schema for posting new messages"""
     content: str

@@ -29,6 +29,9 @@ if REDIS_PASSWORD:
 else:
     REDIS_URL = os.environ.get("REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}")
 
+# Google OAuth2 Configuration
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+
 # Collection names
 CONVERSATIONS_COLLECTION = "conversations"
 USERS_COLLECTION = "users"

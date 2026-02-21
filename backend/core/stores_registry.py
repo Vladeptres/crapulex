@@ -51,6 +51,29 @@ class StoresRegistry:
             password=user_credentials.password,
         )
 
+    def authenticate_google_user(self, google_id: str, email: str, name: str | None = None) -> User:
+        # First check if user already exists with this Google ID
+        user = self.users_store.find_by_google_id(google_id)
+        if user:
+            return user
+
+        # Check if a local user exists with this email and link accounts
+        user = self.users_store.find_by_username(email)
+        if user:
+            if user.auth_provider == "local":
+                # Link existing local account to Google
+                user.auth_provider = "google"
+                user.google_id = google_id
+                self.users_store.users_collection.update_one(
+                    {"id": user.id},
+                    {"$set": {"auth_provider": "google", "google_id": google_id}},
+                )
+                logger.info(f"Linked existing local account {email} to Google")
+            return user
+
+        # Create a new Google user
+        return self.users_store.create_google_user(google_id=google_id, email=email, name=name)
+
     def get_user(self, user_id: str) -> User | None:
         return self.users_store.get_user(user_id=user_id)
 

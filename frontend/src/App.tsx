@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 
 import { client } from '@/api/generated/client.gen'
 import type { ConversationResponse, UserResponse } from '@/api/generated'
@@ -14,6 +15,7 @@ import { showToast } from '@/lib/toast'
 import './App.css'
 
 const apiUrl = import.meta.env.VITE_API_URL || ''
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 console.log('Setting API baseURL to:', apiUrl)
 
 client.setConfig({
@@ -119,49 +121,53 @@ function App() {
 
   if (isLoading || isJoiningConversation) {
     return (
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <div className="h-[100svh] bg-background text-foreground flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>
-              {isJoiningConversation ? 'Joining conversation...' : 'Loading...'}
-            </p>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <div className="h-[100svh] bg-background text-foreground flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p>
+                {isJoiningConversation ? 'Joining conversation...' : 'Loading...'}
+              </p>
+            </div>
           </div>
-        </div>
-        <Toaster />
-      </ThemeProvider>
+          <Toaster />
+        </ThemeProvider>
+      </GoogleOAuthProvider>
     )
   }
 
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div className="h-[100svh] bg-background text-foreground flex flex-col">
-        <main className="flex-1 min-h-0">
-          {currentConversation && user ? (
-            <ChatPage
-              conversation={currentConversation}
-              user={user}
-              onBackToHome={handleBackToHome}
-              autoScroll={true}
-            />
-          ) : (
-            <WelcomeScreen
-              user={user}
-              onLogin={() => setShowLogin(true)}
-              onLogout={handleLogout}
-              onJoinChat={handleJoinChat}
-            />
-          )}
-        </main>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <div className="h-[100svh] bg-background text-foreground flex flex-col">
+          <main className="flex-1 min-h-0">
+            {currentConversation && user ? (
+              <ChatPage
+                conversation={currentConversation}
+                user={user}
+                onBackToHome={handleBackToHome}
+                autoScroll={true}
+              />
+            ) : (
+              <WelcomeScreen
+                user={user}
+                onLogin={() => setShowLogin(true)}
+                onLogout={handleLogout}
+                onJoinChat={handleJoinChat}
+              />
+            )}
+          </main>
 
-        <LoginDialog
-          isOpen={showLogin}
-          onClose={() => setShowLogin(false)}
-          onLoginSuccess={handleLoginSuccess}
-        />
-      </div>
-      <Toaster />
-    </ThemeProvider>
+          <LoginDialog
+            isOpen={showLogin}
+            onClose={() => setShowLogin(false)}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        </div>
+        <Toaster />
+      </ThemeProvider>
+    </GoogleOAuthProvider>
   )
 }
 
