@@ -25,7 +25,6 @@ import AudioRecorder from './AudioRecorder'
 import AudioPlayer from './AudioPlayer'
 import PhotoUploader from './PhotoUploader'
 import PhotoDisplay from './PhotoDisplay'
-import VoteMenu from './VoteMenu'
 import ConversationAnalysisModal from './ConversationAnalysisModal'
 import {
   Tooltip,
@@ -79,7 +78,6 @@ export default function ChatPage({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [wasAtBottom, setWasAtBottom] = useState(true)
-  const [showVoteMenu, setShowVoteMenu] = useState<string | null>(null) // messageId or null
   const [showAnalysisModal, setShowAnalysisModal] = useState(false)
   const [shouldShowAnalysisButton, setShouldShowAnalysisButton] =
     useState(false)
@@ -269,21 +267,6 @@ export default function ChatPage({
               : msg
           )
         )
-      } else if (message.type === 'message_vote_updated') {
-        // Handle message vote updates in real-time — only update votes, preserve media
-        const wsMessage = message.message as MessageResponse
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === message.message_id
-              ? { ...msg, votes: wsMessage.votes }
-              : msg
-          )
-        )
-
-        // Show toast notification only if the change was made by another user
-        if (message.changed_by && message.changed_by !== user.id) {
-          showToast.info('Vote updated', 'Someone voted on a message')
-        }
       }
 
       // Trigger global conversation update for home page for all changes
@@ -699,34 +682,6 @@ export default function ChatPage({
     )
   }
 
-  const handleVote = async (messageId: string, votedForUserId: string) => {
-    try {
-      const messageUpdate: MessageUpdate = {
-        id: messageId,
-        votes: { [user.id]: votedForUserId },
-      }
-
-      const response = await apiApiPatchMessage({
-        path: {
-          conversation_id: conversation.id || '',
-        },
-        body: messageUpdate,
-        headers: {
-          'User-Id': user.id,
-        },
-      })
-
-      if (response.data) {
-        // Update the message in the local state
-        setMessages(prev =>
-          prev.map(msg => (msg.id === messageId ? response.data : msg))
-        )
-      }
-    } catch (error) {
-      console.error('Failed to vote:', error)
-      throw error // Re-throw to let VoteMenu handle the error display
-    }
-  }
 
   return (
     <div className="flex flex-col h-full relative">
@@ -829,7 +784,7 @@ export default function ChatPage({
 
       {/* Messages Area */}
       <div
-        className="flex-1 overflow-y-auto pl-2 pr-4 pt-4 pb-4 space-y-4 min-h-0 relative z-10"
+        className="flex-1 overflow-y-auto pl-2 pr-4 pt-4 pb-4 space-y-1 min-h-0 relative z-10"
         onScroll={handleScroll}
         ref={messagesContainerRef}
       >
@@ -853,8 +808,9 @@ export default function ChatPage({
           groupMessages(messages || []).map((group, groupIndex) => (
             <div
               key={`${group.userId}-${group.timestamp}`}
-              className={`flex ${group.userId === user.id ? 'justify-end' : 'justify-start'} ${groupIndex > 0 ? 'mt-4' : ''}`}
+              className={`flex flex-col ${group.userId === user.id ? 'items-end' : 'items-start'} ${groupIndex > 0 ? 'mt-1' : ''}`}
             >
+              {/* Avatar + Bubbles row */}
               <div
                 className={`flex items-end gap-2 ${group.userId === user.id ? 'flex-row-reverse' : 'flex-row'}`}
               >
@@ -901,9 +857,25 @@ export default function ChatPage({
                   </TooltipProvider>
                 }
 
-                {/* Message Group Content */}
-                <div className="flex flex-col gap-1">
-                  {group.messages.map(message => {
+                {/* Message Group Bubbles (no reactions here) */}
+                <div className="flex flex-col gap-[2px]">
+                  {group.messages.map((message, msgIndex) => {
+                    const isFirst = msgIndex === 0
+                    const isLast = msgIndex === group.messages.length - 1
+                    const isOwn = group.userId === user.id
+                    const bubbleRadius = group.messages.length === 1
+                      ? 'rounded-lg'
+                      : isFirst
+                        ? isOwn
+                          ? 'rounded-lg rounded-br-sm'
+                          : 'rounded-lg rounded-bl-sm'
+                        : isLast
+                          ? isOwn
+                            ? 'rounded-lg rounded-tr-sm'
+                            : 'rounded-lg rounded-tl-sm'
+                          : isOwn
+                            ? 'rounded-lg rounded-r-sm'
+                            : 'rounded-lg rounded-l-sm'
                     const hasMedia =
                       message.medias_metadatas &&
                       message.medias_metadatas.length > 0
@@ -941,44 +913,6 @@ export default function ChatPage({
                           }
                         }}
                       >
-                        {/* Vote Menu - above message content when conversation is locked */}
-                        {showVoteMenu === message.id &&
-                          conversation.is_locked && (
-                            <div
-                              className={`mb-2 ${group.userId === user.id ? 'flex justify-end' : 'flex justify-start'}`}
-                            >
-                              <VoteMenu
-                                message={message}
-                                conversation={conversation}
-                                currentUser={user}
-                                users={users}
-                                conversationUserData={conversationUserData}
-                                onVote={handleVote}
-                                className="max-w-xs"
-                              />
-                            </div>
-                          )}
-
-                        {/* Vote Button - only show when conversation is locked */}
-                        {conversation.is_locked && (
-                          <div
-                            className={`flex gap-1 mb-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <button
-                              onClick={() =>
-                                setShowVoteMenu(
-                                  showVoteMenu === message.id
-                                    ? null
-                                    : message.id
-                                )
-                              }
-                              className="opacity-0 hover:opacity-100 transition-opacity px-2 py-1 rounded-full hover:bg-muted text-xs font-medium"
-                            >
-                              🗳️ Vote
-                            </button>
-                          </div>
-                        )}
-
                         {/* Media displayed without bubble container */}
                         {hasMedia && (
                           <div
@@ -1012,7 +946,7 @@ export default function ChatPage({
                         {/* Text content in bubble */}
                         {(hasTextContent || !hasMedia) && (
                           <div
-                            className={`rounded-lg px-4 py-2 ${hasMedia ? 'mt-1' : ''} ${
+                            className={`${bubbleRadius} px-4 py-1.5 ${hasMedia ? 'mt-1' : ''} ${
                               group.userId === user.id
                                 ? 'gradient-btn text-white'
                                 : 'bg-muted'
@@ -1037,75 +971,88 @@ export default function ChatPage({
                             {formatTime(message.timestamp)}
                           </span>
                         )}
-
-                        {/* Reactions */}
-                        {message.reacts && message.reacts.length > 0 && (
-                          <div
-                            className={`flex flex-wrap gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
-                          >
-                            {Array.from(
-                              new Set(
-                                (message.reacts || []).map(r => r.emoji)
-                              )
-                            ).map(emoji => {
-                              const count = getReactionCount(message, emoji)
-                              const userReacted = hasUserReacted(
-                                message,
-                                emoji
-                              )
-                              return (
-                                <button
-                                  key={emoji}
-                                  onClick={() =>
-                                    handleReaction(message.id, emoji)
-                                  }
-                                  disabled={conversation.is_locked}
-                                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
-                                    userReacted
-                                      ? 'bg-primary text-primary-foreground'
-                                      : 'bg-muted hover:bg-muted/80'
-                                  } ${conversation.is_locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                                >
-                                  <span>{emoji}</span>
-                                  <span>{count}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
-
-                        {/* Add Reaction Buttons - show on long press */}
-                        {longPressMessageId === message.id && (
-                          <div
-                            ref={reactionsRef}
-                            className={`flex gap-1 mt-1 bg-card shadow-lg rounded-full px-2 py-1 border ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
-                          >
-                            {['🥵', '💖', '😎', '👅', '💦', '🦄'].map(
-                              emoji => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => {
-                                    handleReaction(message.id, emoji)
-                                    setLongPressMessageId(null)
-                                  }}
-                                  disabled={conversation.is_locked}
-                                  className={`p-1 rounded-full text-sm transition-colors ${
-                                    conversation.is_locked
-                                      ? 'cursor-not-allowed opacity-50'
-                                      : 'active:bg-muted cursor-pointer'
-                                  }`}
-                                >
-                                  {emoji}
-                                </button>
-                              )
-                            )}
-                          </div>
-                        )}
                       </div>
                     )
                   })}
                 </div>
               </div>
+
+              {/* Reactions & long-press menus — outside the avatar row */}
+              {group.messages.map(message => {
+                const hasReactions = message.reacts && message.reacts.length > 0
+                const showLongPress = longPressMessageId === message.id
+                if (!hasReactions && !showLongPress) return null
+                return (
+                  <div
+                    key={`reactions-${message.id}`}
+                    className={`${group.userId === user.id ? 'pr-8' : 'pl-8'}`}
+                  >
+                    {/* Reactions */}
+                    {hasReactions && (
+                      <div
+                        className={`flex flex-wrap gap-1 mt-1 ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {Array.from(
+                          new Set(
+                            (message.reacts || []).map(r => r.emoji)
+                          )
+                        ).map(emoji => {
+                          const count = getReactionCount(message, emoji)
+                          const userReacted = hasUserReacted(
+                            message,
+                            emoji
+                          )
+                          return (
+                            <button
+                              key={emoji}
+                              onClick={() =>
+                                handleReaction(message.id, emoji)
+                              }
+                              disabled={conversation.is_locked}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
+                                userReacted
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted hover:bg-muted/80'
+                              } ${conversation.is_locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                            >
+                              <span>{emoji}</span>
+                              <span>{count}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Add Reaction Buttons - show on long press */}
+                    {showLongPress && (
+                      <div
+                        ref={reactionsRef}
+                        className={`flex gap-1 mt-1 bg-card shadow-lg rounded-full px-2 py-1 border ${group.userId === user.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {['🥵', '💖', '😎', '👅', '💦', '🦄'].map(
+                          emoji => (
+                            <button
+                              key={emoji}
+                              onClick={() => {
+                                handleReaction(message.id, emoji)
+                                setLongPressMessageId(null)
+                              }}
+                              disabled={conversation.is_locked}
+                              className={`p-1 rounded-full text-sm transition-colors ${
+                                conversation.is_locked
+                                  ? 'cursor-not-allowed opacity-50'
+                                  : 'active:bg-muted cursor-pointer'
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           ))
         )}

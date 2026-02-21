@@ -9,7 +9,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Card, CardContent } from '@/components/ui/card'
 import { Users, Save, X } from 'lucide-react'
 import EmojiPickerComponent from '@/components/ui/emoji-picker'
 import { showToast } from '@/lib/toast'
@@ -337,15 +336,14 @@ export default function UserManagementModal({
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-0.5">
               {users.map(user => (
-                <Card
+                <div
                   key={user.id}
-                  className="transition-colors hover:bg-muted/50"
+                  className="rounded-md transition-colors hover:bg-muted/50 px-2 py-1.5"
                 >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-7 w-7">
                         <AvatarImage
                           src={getGravatarUrl(user.username, 100)}
                           alt={user.username}
@@ -467,18 +465,17 @@ export default function UserManagementModal({
                                 user.smiley || ''
                               )
                             }
-                            className="flex items-center justify-center w-8 h-8 hover:bg-muted/50 rounded-full transition-colors"
+                            className="flex items-center justify-center w-6 h-6 hover:bg-muted/50 rounded-full transition-colors"
                             title="Click to edit smiley"
                           >
-                            <span className="text-xl">
+                            <span className="text-base">
                               {user.smiley || '😀'}
                             </span>
                           </button>
                         )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                </div>
               ))}
             </div>
           )}
