@@ -18,4 +18,4 @@ def check_db_connection():
 
 
 def now_paris() -> datetime:
-    return pytz.timezone("Europe/Paris").localize(datetime.now())  # noqa: DTZ005
+    return datetime.now(tz=pytz.timezone("Europe/Paris"))

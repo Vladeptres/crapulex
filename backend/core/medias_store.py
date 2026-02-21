@@ -123,7 +123,7 @@ class MediasStore:
             size=uploaded_file.size,
             type=media_type,
             issuer_id=issuer_id,
-            timestamp=pytz.timezone("Europe/Paris").localize(datetime.now()),  # noqa: DTZ005
+            timestamp=datetime.now(tz=pytz.timezone("Europe/Paris")),
         )
 
     def generate_presigned_url(self, media_metadata: MediaMetadata, expiration: int = 1800) -> str:

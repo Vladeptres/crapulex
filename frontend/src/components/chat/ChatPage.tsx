@@ -260,19 +260,23 @@ export default function ChatPage({
           showToast.info(visibilityMessage)
         }
       } else if (message.type === 'message_reaction_updated') {
-        // Handle message reaction updates in real-time
-        const updatedMessage = message.message as MessageResponse
+        // Handle message reaction updates in real-time — only update reacts, preserve media
+        const wsMessage = message.message as MessageResponse
         setMessages(prev =>
           prev.map(msg =>
-            msg.id === message.message_id ? updatedMessage : msg
+            msg.id === message.message_id
+              ? { ...msg, reacts: wsMessage.reacts }
+              : msg
           )
         )
       } else if (message.type === 'message_vote_updated') {
-        // Handle message vote updates in real-time
-        const updatedMessage = message.message as MessageResponse
+        // Handle message vote updates in real-time — only update votes, preserve media
+        const wsMessage = message.message as MessageResponse
         setMessages(prev =>
           prev.map(msg =>
-            msg.id === message.message_id ? updatedMessage : msg
+            msg.id === message.message_id
+              ? { ...msg, votes: wsMessage.votes }
+              : msg
           )
         )
 
@@ -569,8 +573,13 @@ export default function ChatPage({
   }
 
   const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const utcTimestamp = timestamp.endsWith('Z') || timestamp.includes('+') ? timestamp : timestamp + 'Z'
+    const date = new Date(utcTimestamp)
+    return date.toLocaleTimeString('fr-FR', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Europe/Paris'
+    })
   }
 
   const groupMessages = (messages: MessageResponse[]) => {

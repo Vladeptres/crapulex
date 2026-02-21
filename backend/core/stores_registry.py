@@ -128,7 +128,7 @@ class StoresRegistry:
             content=message_post.content,
             conversation_id=message_post.conversation_id,
             issuer_id=message_post.issuer_id,
-            timestamp=pytz.timezone("Europe/Paris").localize(datetime.now()),  # noqa: DTZ005
+            timestamp=datetime.now(tz=pytz.timezone("Europe/Paris")),
             reacts=[],
             medias_metadatas=medias_metadas,
         )
@@ -168,30 +168,32 @@ class StoresRegistry:
         logger.info(f"Message {message_id} successfully updated.")
         return existing_message
 
+    def _message_to_response(self, message: Message) -> MessageResponse:
+        """Convert a core Message to a MessageResponse with presigned URLs."""
+        return MessageResponse(
+            id=message.id,
+            content=message.content,
+            conversation_id=message.conversation_id,
+            issuer_id=message.issuer_id,
+            timestamp=message.timestamp,
+            reacts=[ReactResponse(emoji=react.emoji, issuer_id=react.issuer_id) for react in message.reacts],
+            medias_metadatas=[
+                MediaMetadataResponse(
+                    id=metadata.id,
+                    size=metadata.size,
+                    issuer_id=metadata.issuer_id,
+                    type=metadata.type,
+                    timestamp=metadata.timestamp,
+                    presigned_url=self.medias_store.generate_presigned_url(metadata),
+                )
+                for metadata in message.medias_metadatas
+            ],
+            votes=message.votes,
+        )
+
     def get_messages(self, conversation_id: str) -> list[MessageResponse]:
         messages = self.messages_store.get_messages(conversation_id=conversation_id)
-        return [
-            MessageResponse(
-                id=message.id,
-                content=message.content,
-                conversation_id=message.conversation_id,
-                issuer_id=message.issuer_id,
-                timestamp=message.timestamp,
-                reacts=[ReactResponse(emoji=react.emoji, issuer_id=react.issuer_id) for react in message.reacts],
-                medias_metadatas=[
-                    MediaMetadataResponse(
-                        id=metadata.id,
-                        size=metadata.size,
-                        issuer_id=metadata.issuer_id,
-                        type=metadata.type,
-                        timestamp=metadata.timestamp,
-                        presigned_url=self.medias_store.generate_presigned_url(metadata),
-                    )
-                    for metadata in message.medias_metadatas
-                ],
-            )
-            for message in messages
-        ]
+        return [self._message_to_response(message) for message in messages]
 
     def media_exists(self, media_metadata: MediaMetadata) -> bool:
         return self.medias_store.media_exists(media_metadata)
