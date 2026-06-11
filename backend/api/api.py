@@ -1,7 +1,7 @@
+import asyncio
 import random
 from pathlib import Path
 
-import chat_analyser
 import emoji
 from channels.layers import get_channel_layer
 from django.http import FileResponse, Http404, HttpResponse
@@ -12,21 +12,29 @@ from pydantic import ValidationError
 
 from api.config import MONGO_DB_NAME
 from api.models import (
+    AnalysisResponse,
+    AnalysisUserFeedback,
     ConversationCreate,
     ConversationResponse,
     ConversationUpdate,
     ConversationUserResponse,
     ConversationUserUpdate,
+    CooldownErrorResponse,
+    CooldownResponse,
     ErrorResponse,
     GoogleAuthRequest,
     MessagePost,
     MessageResponse,
     MessageUpdate,
+    RevealStatusResponse,
     SuccessResponse,
     UserCredentials,
+    UserProfileResponse,
     UserResponse,
 )
-from core.stores_registry import StoresRegistry
+from core import config as core_config
+from core.badges import BADGES
+from core.stores_registry import CooldownActiveError, StoresRegistry
 
 registry = StoresRegistry(db_name=MONGO_DB_NAME)
 
@@ -205,7 +213,10 @@ async def join_conversation(request, conversation_id: str):
         return 500, {"error": str(e)}
 
 
-@api.post("chat/{conversation_id}/messages/", response={200: MessageResponse, 422: ErrorResponse, 500: ErrorResponse})
+@api.post(
+    "chat/{conversation_id}/messages/",
+    response={200: MessageResponse, 422: ErrorResponse, 429: CooldownErrorResponse, 500: ErrorResponse},
+)
 async def post_message(
     request,
     conversation_id: str,
@@ -219,6 +230,7 @@ async def post_message(
             content=message.content,
             conversation_id=conversation_id,
             issuer_id=user_id,
+            message_type=message.message_type,
         )
         created_message = registry.add_message(message_post=message_post, medias=medias)
         logger.info(f"Message posted to conversation {conversation_id}.")
@@ -271,12 +283,137 @@ async def post_message(
             logger.warning(f"Failed to send websocket notification for new message in {conversation_id}: {ws_error}")
 
         return 200, created_message
+    except CooldownActiveError as ce:
+        logger.info(f"Cooldown active for user {user_id} in {conversation_id}: {ce}")
+        return 429, {
+            "error": str(ce),
+            "message_type": ce.message_type,
+            "retry_after_seconds": ce.retry_after_seconds,
+        }
     except (ValueError, ValidationError) as ve:
         logger.warning(f"Validation error posting message to {conversation_id}: {ve}")
         return 422, {"error": f"Validation error: {ve}"}
     except Exception as e:
         logger.error(f"Unexpected error posting message to {conversation_id}: {e}")
         return 500, {"error": str(e)}
+
+
+@api.post(
+    "chat/{conversation_id}/reveal-ready",
+    response={200: RevealStatusResponse, 422: ErrorResponse, 500: ErrorResponse},
+)
+async def mark_reveal_ready(request, conversation_id: str):
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        logger.info(f"User {user_id} tapped reveal in conversation {conversation_id}.")
+        ready_count, member_count, is_revealed = registry.mark_reveal_ready(
+            conversation_id=conversation_id,
+            user_id=user_id,
+        )
+
+        # Broadcast live counter / reveal trigger
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                await channel_layer.group_send(
+                    f"chat_{conversation_id}",
+                    {
+                        "type": "reveal_ready_changed",
+                        "conversation_id": conversation_id,
+                        "ready_count": ready_count,
+                        "member_count": member_count,
+                        "changed_by": user_id,
+                    },
+                )
+                if is_revealed:
+                    await channel_layer.group_send(
+                        f"chat_{conversation_id}",
+                        {
+                            "type": "reveal_triggered",
+                            "conversation_id": conversation_id,
+                        },
+                    )
+        except Exception as ws_error:
+            logger.warning(f"Failed to send reveal websocket notification for {conversation_id}: {ws_error}")
+
+        return 200, RevealStatusResponse(
+            ready_count=ready_count,
+            member_count=member_count,
+            is_revealed=is_revealed,
+            user_is_ready=True,
+        )
+    except ValueError as ve:
+        logger.warning(f"Invalid reveal-ready request for {conversation_id}: {ve}")
+        return 422, {"error": str(ve)}
+    except Exception as e:
+        logger.error(f"Error marking reveal ready for conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.get("chat/{conversation_id}/reveal-status", response={200: RevealStatusResponse, 500: ErrorResponse})
+def get_reveal_status(request, conversation_id: str):
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        status = registry.get_reveal_status(conversation_id=conversation_id, user_id=user_id)
+        return 200, RevealStatusResponse(**status)
+    except Exception as e:
+        logger.error(f"Error fetching reveal status for conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.get("users/{user_id}/profile", response={200: UserProfileResponse, 404: ErrorResponse, 500: ErrorResponse})
+def get_user_profile(request, user_id: str):
+    try:
+        logger.info(f"Received request to get profile for user {user_id}.")
+        profile = registry.get_user_profile(user_id=user_id)
+        return 200, UserProfileResponse(**profile)
+    except KeyError:
+        return 404, {"error": f"User {user_id} not found"}
+    except Exception as e:
+        logger.error(f"Error fetching profile for user {user_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+@api.get("chat/{conversation_id}/cooldowns", response={200: CooldownResponse, 500: ErrorResponse})
+def get_cooldowns(request, conversation_id: str):
+    user_id = request.headers.get("user_id") or request.headers.get("User-Id")
+    try:
+        cooldowns = registry.get_cooldowns(conversation_id=conversation_id, user_id=user_id)
+        return 200, CooldownResponse(
+            cooldowns=cooldowns,
+            cooldown_duration_seconds=core_config.MESSAGE_COOLDOWN_SECONDS,
+        )
+    except Exception as e:
+        logger.error(f"Error fetching cooldowns for conversation {conversation_id}: {e}")
+        return 500, {"error": str(e)}
+
+
+async def _run_analysis_background(conversation_id: str, channel_layer) -> None:
+    """Run chat analysis in a background thread and push WS updates on finish."""
+    try:
+        await asyncio.to_thread(registry.run_analysis, conversation_id)
+        analysis_status = "done"
+        logger.info(f"Background analysis completed for {conversation_id}")
+    except Exception as e:
+        logger.error(f"Background analysis failed for {conversation_id}: {e}")
+        analysis_status = "failed"
+        registry.update_conversation(
+            conversation_id=conversation_id,
+            conversation_update=ConversationUpdate(analysis_status="failed"),
+        )
+
+    if channel_layer:
+        try:
+            await channel_layer.group_send(
+                f"chat_{conversation_id}",
+                {
+                    "type": "analysis_status_changed",
+                    "conversation_id": conversation_id,
+                    "analysis_status": analysis_status,
+                },
+            )
+        except Exception as ws_err:
+            logger.warning(f"Failed to push analysis_status_changed for {conversation_id}: {ws_err}")
 
 
 @api.patch("chat/{conversation_id}", response={200: ConversationResponse, 422: ErrorResponse, 500: ErrorResponse})
@@ -326,6 +463,24 @@ async def patch_conversation(request, conversation_id: str, conversation: Conver
                         },
                     )
                     logger.info(f"Sent conversation lock change notification for {conversation_id}")
+
+                    # Trigger analysis asynchronously when the conversation is locked
+                    if conversation.is_locked and not old_locked:
+                        registry.update_conversation(
+                            conversation_id=conversation_id,
+                            conversation_update=ConversationUpdate(analysis_status="running"),
+                        )
+                        await channel_layer.group_send(
+                            f"chat_{conversation_id}",
+                            {
+                                "type": "analysis_status_changed",
+                                "conversation_id": conversation_id,
+                                "analysis_status": "running",
+                            },
+                        )
+                        _analysis_task = asyncio.create_task(  # noqa: RUF006
+                            _run_analysis_background(conversation_id, channel_layer)
+                        )
 
                 # Visibility state change notification
                 if conversation.is_visible is not None and conversation.is_visible != old_visible:
@@ -509,12 +664,14 @@ def create_conversation_user(request, conversation_id: str, user_data: Conversat
             user_id=current_user_id,
             pseudo=user_data.pseudo,
             smiley=user_data.smiley,
+            timer_warning_dismissed=user_data.timer_warning_dismissed,
         )
         logger.info(f"User data created/updated for user {current_user_id} in conversation {conversation_id}.")
         return 200, ConversationUserResponse(
             user_id=current_user_id,
             pseudo=updated_user.pseudo,
             smiley=updated_user.smiley,
+            timer_warning_dismissed=updated_user.timer_warning_dismissed,
         )
     except Exception as e:
         logger.error(
@@ -548,6 +705,7 @@ async def update_conversation_user(
             user_id=target_user_id,
             pseudo=pseudo,
             smiley=smiley,
+            timer_warning_dismissed=user_data.timer_warning_dismissed,
         )
 
         # Send websocket notification for user data changes
@@ -575,6 +733,7 @@ async def update_conversation_user(
             user_id=current_user_id,
             pseudo=updated_user.pseudo,
             smiley=updated_user.smiley,
+            timer_warning_dismissed=updated_user.timer_warning_dismissed,
         )
     except Exception as e:
         logger.error(f"Error updating user data for user {current_user_id} in conversation {conversation_id}: {e}")
@@ -646,24 +805,54 @@ def get_conversation_users(request, conversation_id: str):
 
 @api.get(
     "chat/{conversation_id}/analyse",
-    response={200: chat_analyser.api.models.ConversationAnalysisResponse, 500: ErrorResponse},
+    response={200: AnalysisResponse, 500: ErrorResponse},
 )
-def analyse_chat(request, conversation_id: str):
-    try:
-        logger.info(f"Received request to analyse conversation {conversation_id}.")
-        conversation = registry.get_conversation(conversation_id=conversation_id)
-        messages = registry.get_messages(conversation_id=conversation_id)
-        if not conversation.analysis:
-            analyse = chat_analyser.core.analyser.analyse_chat(
-                context_type="party",
-                users=conversation.users,
-                messages=messages,
-            )
-            conversation.analysis = analyse.model_dump()
-            registry.update_conversation(conversation_id=conversation_id, conversation_update=conversation)
+def get_analysis(request, conversation_id: str):
+    """Return the stored analysis result in the format the frontend expects.
 
-        logger.info(f"Analysed conversation {conversation_id}.")
-        return 200, chat_analyser.api.models.ConversationAnalysisResponse.model_validate(conversation.analysis)
+    Analysis is triggered asynchronously when the admin locks the conversation.
+    This endpoint just serves whatever is stored; returns an empty result if
+    analysis hasn't run yet.
+    """
+    try:
+        logger.info(f"Received request to get analysis for conversation {conversation_id}.")
+        conversation = registry.get_conversation(conversation_id=conversation_id)
+        raw = conversation.analysis or {}
+        users_feedback_raw = raw.get("users_feedback", {})
+
+        # Build pseudo → user_id mapping for the response
+        pseudo_to_user_id: dict[str, str] = {}
+        for uid, cu in conversation.users.items():
+            try:
+                u = registry.users_store.get_user(user_id=uid)
+                pseudo = cu.pseudo or (u.username if u else uid)
+            except Exception:
+                pseudo = uid
+            pseudo_to_user_id[pseudo] = uid
+
+        feedbacks = []
+        for pseudo, fb in users_feedback_raw.items():
+            user_id = pseudo_to_user_id.get(pseudo, pseudo)
+            badge_name = fb.get("badge", "")
+            feedbacks.append(
+                AnalysisUserFeedback(
+                    user_id=user_id,
+                    pseudo=pseudo,
+                    summary=fb.get("summary", ""),
+                    emoji=fb.get("emoji", ""),
+                    badge=badge_name,
+                    badge_emoji=BADGES.get(badge_name, "🏅") if badge_name else "",
+                    wildness_score=fb.get("wildness_score", 0),
+                ),
+            )
+
+        return 200, AnalysisResponse(
+            summary=raw.get("summary", ""),
+            users_feedbacks=feedbacks,
+            party_title=raw.get("party_title", ""),
+            quote_of_the_night=raw.get("quote_of_the_night", ""),
+            quote_author=raw.get("quote_author", ""),
+        )
     except Exception as e:
-        logger.error(f"Error analysing conversation {conversation_id}: {e}")
+        logger.error(f"Error fetching analysis for conversation {conversation_id}: {e}")
         return 500, {"error": str(e)}

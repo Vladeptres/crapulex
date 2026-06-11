@@ -1,11 +1,17 @@
+import math
 import random
 import string
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
+
+import chat_analyser.core.analyser as analyser_module
 
 import pytz
 from loguru import logger
+
+from core import config
+from core.badges import BADGES, badges_with_levels
 
 from api.models import (
     ConversationCreate,
@@ -22,10 +28,31 @@ from core.conversations_store import ConversationsStore
 from core.medias_store import MediasStore
 from core.messages_store import MessagesStore
 from core.models import Conversation, ConversationUser, MediaMetadata, Message, React, User
+from core.transcription import transcribe_audio
 from core.users_store import UsersStore
 from core.utils import check_db_connection
 
 check_db_connection()
+
+COOLDOWN_MESSAGE_TYPES = ("media", "voice", "drawing")
+
+
+class CooldownActiveError(Exception):
+    """Raised when a user tries to send a message type that is still on cooldown."""
+
+    def __init__(self, message_type: str, retry_after_seconds: int):
+        self.message_type = message_type
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(
+            f"Message type '{message_type}' is on cooldown for another {retry_after_seconds} seconds",
+        )
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """Normalize a datetime to aware UTC (Mongo returns naive UTC datetimes)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=pytz.UTC)
+    return dt.astimezone(pytz.UTC)
 
 
 class StoresRegistry:
@@ -126,6 +153,36 @@ class StoresRegistry:
         )
         self.conversations_store.update_conversation(updated_conversation)
 
+    def _infer_message_type(self, message_post: MessagePost, medias: list[Any] | None) -> str:
+        """Resolve the message type from the request, falling back to media content type."""
+        if message_post.message_type:
+            return message_post.message_type
+        if medias:
+            for media in medias:
+                content_type = getattr(media, "content_type", "") or ""
+                if content_type.startswith("audio/"):
+                    return "voice"
+            return "media"
+        return "text"
+
+    def get_cooldowns(self, conversation_id: str, user_id: str) -> dict[str, int]:
+        """Return remaining cooldown seconds per message type for a user (0 = available)."""
+        conversation_user = self.conversations_store.get_conversation_user(
+            conversation_id=conversation_id,
+            user_id=user_id,
+        )
+        now = datetime.now(tz=pytz.UTC)
+        cooldowns = {}
+        for message_type in COOLDOWN_MESSAGE_TYPES:
+            last_sent = (conversation_user.last_message_at or {}).get(message_type) if conversation_user else None
+            if last_sent is None:
+                cooldowns[message_type] = 0
+                continue
+            elapsed = now - _as_utc(last_sent)
+            remaining = timedelta(seconds=config.MESSAGE_COOLDOWN_SECONDS) - elapsed
+            cooldowns[message_type] = max(0, int(remaining.total_seconds()))
+        return cooldowns
+
     def add_message(self, message_post: MessagePost, medias: list[Any] | None = None) -> MessageResponse:
         conversation = self.conversations_store.get_conversation(message_post.conversation_id)
         if message_post.issuer_id not in conversation.users:
@@ -134,16 +191,29 @@ class StoresRegistry:
                 f"conversation {message_post.conversation_id}",
             )
 
+        message_type = self._infer_message_type(message_post, medias)
+
+        # Enforce per-type 30-minute cooldown
+        if message_type in COOLDOWN_MESSAGE_TYPES:
+            remaining = self.get_cooldowns(
+                conversation_id=message_post.conversation_id,
+                user_id=message_post.issuer_id,
+            )[message_type]
+            if remaining > 0:
+                raise CooldownActiveError(message_type=message_type, retry_after_seconds=remaining)
+
         medias_metadas = []
         if medias:
-            medias_metadas = [
-                self.medias_store.upload_media(
+            for media in medias:
+                metadata = self.medias_store.upload_media(
                     uploaded_file=media,
                     conversation_id=message_post.conversation_id,
                     issuer_id=message_post.issuer_id,
                 )
-                for media in medias
-            ]
+                # Transcribe voice messages on the fly (Mistral Voxtral)
+                if metadata.type == "audio":
+                    metadata.transcription = transcribe_audio(media)
+                medias_metadas.append(metadata)
 
         # Convert API model to core model
         message = Message(
@@ -154,29 +224,22 @@ class StoresRegistry:
             timestamp=datetime.now(tz=pytz.timezone("Europe/Paris")),
             reacts=[],
             medias_metadatas=medias_metadas,
+            message_type=message_type,
         )
 
         self.messages_store.add_message(message=message)
+
+        # Start the cooldown window for this type
+        if message_type in COOLDOWN_MESSAGE_TYPES:
+            self.conversations_store.set_last_message_at(
+                conversation_id=message_post.conversation_id,
+                user_id=message_post.issuer_id,
+                message_type=message_type,
+                timestamp=datetime.now(tz=pytz.UTC),
+            )
+
         logger.info(f"Message {message} successfully added.")
-        return MessageResponse(
-            id=message.id,
-            content=message.content,
-            conversation_id=message.conversation_id,
-            issuer_id=message.issuer_id,
-            timestamp=message.timestamp,
-            reacts=[ReactResponse(emoji=react.emoji, issuer_id=react.issuer_id) for react in message.reacts],
-            medias_metadatas=[
-                MediaMetadataResponse(
-                    id=metadata.id,
-                    size=metadata.size,
-                    issuer_id=metadata.issuer_id,
-                    type=metadata.type,
-                    timestamp=metadata.timestamp,
-                    presigned_url=self.medias_store.generate_presigned_url(metadata),
-                )
-                for metadata in message.medias_metadatas
-            ],
-        )
+        return self._message_to_response(message)
 
     def update_message(self, message_id: str, message_update: MessageUpdate) -> Message:
         # Get existing message
@@ -208,10 +271,12 @@ class StoresRegistry:
                     type=metadata.type,
                     timestamp=metadata.timestamp,
                     presigned_url=self.medias_store.generate_presigned_url(metadata),
+                    transcription=metadata.transcription,
                 )
                 for metadata in message.medias_metadatas
             ],
             votes=message.votes,
+            message_type=message.message_type,
         )
 
     def get_messages(self, conversation_id: str) -> list[MessageResponse]:
@@ -244,6 +309,7 @@ class StoresRegistry:
         user_id: str,
         pseudo: str | None = None,
         smiley: str | None = None,
+        timer_warning_dismissed: bool | None = None,
     ) -> ConversationUser:
         """Update user data in a conversation"""
         return self.conversations_store.update_conversation_user(
@@ -251,11 +317,152 @@ class StoresRegistry:
             user_id=user_id,
             pseudo=pseudo,
             smiley=smiley,
+            timer_warning_dismissed=timer_warning_dismissed,
         )
 
     def get_conversation_user(self, conversation_id: str, user_id: str) -> ConversationUser | None:
         """Get user data for a specific user in a conversation"""
         return self.conversations_store.get_conversation_user(conversation_id=conversation_id, user_id=user_id)
+
+    def mark_reveal_ready(self, conversation_id: str, user_id: str) -> tuple[int, int, bool]:
+        """Mark a user as ready to reveal. Returns (ready_count, member_count, is_revealed).
+
+        Fires the reveal permanently once >= 50% of current members are ready.
+        """
+        conversation = self.conversations_store.get_conversation(conversation_id=conversation_id)
+        if not conversation.is_locked:
+            raise ValueError("Conversation must be locked before revealing")
+        if user_id not in conversation.users:
+            raise ValueError(f"User {user_id} is not a member of conversation {conversation_id}")
+
+        if conversation.is_revealed:
+            ready_count = len(conversation.reveal_ready_user_ids)
+            return ready_count, len(conversation.users), True
+
+        self.conversations_store.add_reveal_ready_user(conversation_id=conversation_id, user_id=user_id)
+        conversation = self.conversations_store.get_conversation(conversation_id=conversation_id)
+
+        # Only count members still in the conversation
+        ready_ids = [uid for uid in conversation.reveal_ready_user_ids if uid in conversation.users]
+        member_count = len(conversation.users)
+        threshold = math.ceil(member_count / 2)
+        is_revealed = len(ready_ids) >= threshold
+        if is_revealed:
+            self.conversations_store.set_revealed(conversation_id=conversation_id)
+            logger.info(f"Reveal triggered for conversation {conversation_id} ({len(ready_ids)}/{member_count})")
+        return len(ready_ids), member_count, is_revealed
+
+    def get_reveal_status(self, conversation_id: str, user_id: str) -> dict:
+        """Return the live reveal readiness state for a conversation."""
+        conversation = self.conversations_store.get_conversation(conversation_id=conversation_id)
+        ready_ids = [uid for uid in conversation.reveal_ready_user_ids if uid in conversation.users]
+        return {
+            "ready_count": len(ready_ids),
+            "member_count": len(conversation.users),
+            "is_revealed": conversation.is_revealed,
+            "user_is_ready": user_id in ready_ids,
+        }
+
+    def award_badge(self, user_id: str, badge: str) -> None:
+        """Increment a user's cumulative badge count (one badge per party)."""
+        self.users_store.users_collection.update_one(
+            {"id": user_id},
+            {"$inc": {f"badges.{badge}": 1}},
+        )
+        logger.info(f"Awarded badge '{badge}' to user {user_id}")
+
+    def get_user_profile(self, user_id: str) -> dict:
+        """Build the profile payload: badges with levels, past parties, simple stats."""
+        user = self.users_store.get_user(user_id=user_id)
+        if not user:
+            raise KeyError(f"User {user_id} not found")
+
+        conversations = self.conversations_store.get_conversations(user_id=user_id)
+        total_messages = self.messages_store.messages_collection.count_documents({"issuer_id": user_id})
+
+        return {
+            "id": user.id,
+            "username": user.username,
+            "pseudo": user.pseudo,
+            "badges": badges_with_levels(user.badges),
+            "past_parties": [{"id": c.id, "name": c.name, "is_locked": c.is_locked} for c in conversations],
+            "total_messages": total_messages,
+            "parties_attended": len(conversations),
+        }
+
+    def run_analysis(self, conversation_id: str) -> dict:
+        """Run the chat analyser synchronously and store results on the conversation.
+
+        Returns the raw analysis dict (keyed by pseudo). Intended to be called
+        from a background thread via asyncio.to_thread().
+        """
+        conversation = self.conversations_store.get_conversation(conversation_id=conversation_id)
+        messages = self.messages_store.get_messages(conversation_id=conversation_id)
+
+        # Build pseudo → user_id mapping and list of known pseudos
+        pseudo_to_user_id: dict[str, str] = {}
+        for uid, cu in conversation.users.items():
+            pseudo = cu.pseudo or self.users_store.get_user(user_id=uid).username if uid else None
+            if pseudo:
+                pseudo_to_user_id[pseudo] = uid
+
+        user_list = list(pseudo_to_user_id.keys())
+
+        # Build messages list with pseudo as "user" key
+        uid_to_pseudo = {uid: pseudo for pseudo, uid in pseudo_to_user_id.items()}
+        formatted_messages = []
+        for msg in messages:
+            pseudo = uid_to_pseudo.get(msg.issuer_id, msg.issuer_id)
+            content_parts = []
+            if msg.content:
+                content_parts.append(msg.content)
+            for media in msg.medias_metadatas or []:
+                if media.transcription:
+                    content_parts.append(f"[voice: {media.transcription}]")
+                elif media.type == "image":
+                    kind = getattr(msg, "message_type", "media")
+                    content_parts.append(f"[{kind if kind else 'photo'}]")
+                elif media.type == "audio":
+                    content_parts.append("[voice message]")
+            if not content_parts:
+                continue
+            formatted_messages.append({"user": pseudo, "content": " ".join(content_parts)})
+
+        if not formatted_messages:
+            logger.info(f"No messages to analyse for conversation {conversation_id}")
+            return {}
+
+        try:
+            result = analyser_module.analyse_chat(
+                context_type="party",
+                users=user_list,
+                messages=formatted_messages,
+                pseudo_to_user_id=pseudo_to_user_id,
+            )
+        except Exception as e:
+            logger.error(f"Analysis failed for conversation {conversation_id}: {e}")
+            raise
+
+        # Award badges (one per user per party)
+        already_awarded: set[str] = set()
+        for pseudo, feedback in result.users_feedback.items():
+            badge_name = feedback.badge
+            if not badge_name or badge_name not in BADGES:
+                logger.warning(f"Unknown badge '{badge_name}' for {pseudo} — skipping award")
+                continue
+            user_id = pseudo_to_user_id.get(pseudo)
+            if not user_id or user_id in already_awarded:
+                continue
+            self.award_badge(user_id=user_id, badge=badge_name)
+            already_awarded.add(user_id)
+            logger.info(f"Awarded '{badge_name}' to {pseudo} ({user_id})")
+
+        # Store analysis in conversation
+        analysis_dict = result.model_dump()
+        conversation_update = ConversationUpdate(analysis=analysis_dict, analysis_status="done")
+        self.update_conversation(conversation_id=conversation_id, conversation_update=conversation_update)
+        logger.info(f"Analysis complete for conversation {conversation_id}")
+        return analysis_dict
 
     def find_message_by_media_id(self, media_id: str) -> Message | None:
         """Find a message that contains media with the given ID"""

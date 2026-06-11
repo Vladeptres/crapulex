@@ -1,4 +1,4 @@
-import { LogOut, Palette } from 'lucide-react'
+import { LogOut, Palette, User } from 'lucide-react'
 
 import type { UserResponse } from '@/api/generated'
 import { useTheme } from '@/components/theme-provider'
@@ -17,9 +17,14 @@ import { getGravatarUrl, getUserInitials } from '@/lib/gravatar'
 interface AppHeaderProps {
   user: UserResponse | null
   onLogout: () => void
+  onOpenProfile?: () => void
 }
 
-export default function AppHeader({ user, onLogout }: AppHeaderProps) {
+export default function AppHeader({
+  user,
+  onLogout,
+  onOpenProfile,
+}: AppHeaderProps) {
   const { theme, setTheme } = useTheme()
 
   const toggleTheme = () => {
@@ -69,6 +74,12 @@ export default function AppHeader({ user, onLogout }: AppHeaderProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {onOpenProfile && (
+                <DropdownMenuItem onClick={onOpenProfile}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>My profile</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={toggleTheme}>
                 <Palette className="mr-2 h-4 w-4" />
                 <span>

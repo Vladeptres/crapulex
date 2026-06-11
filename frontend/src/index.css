@@ -3,6 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  /* Handwriting-feel stack with zero network fetch: Windows -> Segoe Print,
+     macOS/iOS -> Bradley Hand / Chalkboard SE / Noteworthy, Android maps the
+     `casual` generic family to its bundled handwriting font, and `cursive`
+     is the guaranteed final fallback. Always pair `font-note` with explicit
+     text size + line height: these fonts have very different metrics. */
+  --font-note:
+    'Segoe Print', 'Bradley Hand', 'Chalkboard SE', 'Noteworthy',
+    'Comic Sans MS', 'Comic Neue', casual, cursive;
+}
+
 :root {
   --radius: 0.625rem;
 
@@ -163,5 +174,35 @@ h1 {
   .gradient-text {
     @apply bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500;
     @apply bg-clip-text text-transparent;
+  }
+
+  /* Ruled note-paper writing surface for the chat composer. The 1.75rem
+     line pitch matches leading-7, so the rules track the text grid on any
+     platform regardless of which handwriting font resolved.
+     background-attachment: local makes the rules scroll WITH the text and
+     the 0.5rem offset compensates the textarea's pt-2 top padding so each
+     rule sits under its line of text. */
+  .note-ruled {
+    background-image:
+      linear-gradient(
+        to bottom,
+        transparent calc(1.75rem - 1px),
+        rgba(96, 165, 250, 0.35) calc(1.75rem - 1px)
+      ),
+      linear-gradient(
+        to right,
+        transparent 1rem,
+        rgba(244, 114, 182, 0.5) 1rem,
+        rgba(244, 114, 182, 0.5) calc(1rem + 1px),
+        transparent calc(1rem + 1px)
+      );
+    background-size:
+      100% 1.75rem,
+      100% 100%;
+    background-attachment: local, local;
+    background-position:
+      0 0.5rem,
+      0 0;
+    background-repeat: repeat, no-repeat;
   }
 }

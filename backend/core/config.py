@@ -32,6 +32,15 @@ else:
 # Google OAuth2 Configuration
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
+# Mistral API (speech-to-text via Voxtral)
+MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "")
+# chat_analyser wheel expects API_KEY env var
+os.environ.setdefault("API_KEY", MISTRAL_API_KEY)
+MISTRAL_TRANSCRIPTION_MODEL = os.environ.get("MISTRAL_TRANSCRIPTION_MODEL", "voxtral-mini-latest")
+
+# Per-type message cooldown (seconds) — applies to media / voice / drawing messages
+MESSAGE_COOLDOWN_SECONDS = int(os.environ.get("MESSAGE_COOLDOWN_SECONDS", "1800"))
+
 # Collection names
 CONVERSATIONS_COLLECTION = "conversations"
 USERS_COLLECTION = "users"

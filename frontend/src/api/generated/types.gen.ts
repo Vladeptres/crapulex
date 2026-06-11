@@ -224,6 +224,10 @@ export type MessagePost = {
    * Conversation Id
    */
   conversation_id: string
+  /**
+   * Message Type
+   */
+  message_type?: 'text' | 'media' | 'voice' | 'drawing' | null
 }
 
 /**

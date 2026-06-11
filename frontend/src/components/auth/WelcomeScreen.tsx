@@ -31,6 +31,7 @@ interface WelcomeScreenProps {
   onLogin: () => void
   onLogout: () => void
   onJoinChat?: (conversation: ConversationResponse) => void
+  onOpenProfile?: () => void
 }
 
 export default function WelcomeScreen({
@@ -38,6 +39,7 @@ export default function WelcomeScreen({
   onLogin,
   onLogout,
   onJoinChat,
+  onOpenProfile,
 }: WelcomeScreenProps) {
   const [users, setUsers] = useState<Record<string, UserResponse>>({})
   const [conversations, setConversations] = useState<ConversationResponse[]>([])
@@ -301,7 +303,11 @@ export default function WelcomeScreen({
     return (
       <div className="flex flex-col h-full">
         {/* App Header */}
-        <AppHeader user={user} onLogout={onLogout} />
+        <AppHeader
+          user={user}
+          onLogout={onLogout}
+          onOpenProfile={onOpenProfile}
+        />
 
         {/* Conversation List Section */}
         <div className="flex-1 overflow-hidden relative">

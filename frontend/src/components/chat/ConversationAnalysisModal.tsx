@@ -130,57 +130,55 @@ export default function ConversationAnalysisModal({
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Individual Highlights</h3>
                 <div className="grid gap-4">
-                  {Object.entries(analysis.users_feedback).map(
-                    ([userId, feedback]) => {
-                      const user = users[userId]
-                      const userData = conversationUserData[userId]
+                  {analysis.users_feedbacks.map(feedback => {
+                    const user = users[feedback.user_id]
+                    const userData = conversationUserData[feedback.user_id]
 
-                      if (!user) return null
+                    if (!user) return null
 
-                      return (
-                        <div
-                          key={userId}
-                          className="flex items-start gap-3 p-4 rounded-lg border bg-card"
-                        >
-                          {/* User Avatar/Emoji */}
-                          <div className="flex-shrink-0">
-                            {userData?.smiley ? (
-                              <div className="h-10 w-10 flex items-center justify-center rounded-full bg-muted">
-                                <span className="text-xl">
-                                  {userData.smiley}
-                                </span>
-                              </div>
-                            ) : (
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage
-                                  src={getGravatarUrl(user.username, 100)}
-                                  alt={user.username}
-                                />
-                                <AvatarFallback>
-                                  {getUserInitials(user.username)}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                          </div>
-
-                          {/* User Info and Feedback */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-medium">
-                                {getUserDisplayName(userId)}
-                              </h4>
-                              <span className="text-2xl" title="Night emoji">
-                                {feedback.emoji}
+                    return (
+                      <div
+                        key={feedback.user_id}
+                        className="flex items-start gap-3 p-4 rounded-lg border bg-card"
+                      >
+                        {/* User Avatar/Emoji */}
+                        <div className="flex-shrink-0">
+                          {userData?.smiley ? (
+                            <div className="h-10 w-10 flex items-center justify-center rounded-full bg-muted">
+                              <span className="text-xl">
+                                {userData.smiley}
                               </span>
                             </div>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {feedback.summary}
-                            </p>
-                          </div>
+                          ) : (
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage
+                                src={getGravatarUrl(user.username, 100)}
+                                alt={user.username}
+                              />
+                              <AvatarFallback>
+                                {getUserInitials(user.username)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
                         </div>
-                      )
-                    }
-                  )}
+
+                        {/* User Info and Feedback */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium">
+                              {getUserDisplayName(feedback.user_id)}
+                            </h4>
+                            <span className="text-2xl" title="Night emoji">
+                              {feedback.emoji}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {feedback.summary}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 

@@ -1,12 +1,16 @@
 // Custom API functions for conversation analysis
 export interface UserFeedback {
+  user_id: string
+  pseudo: string
   summary: string
   emoji: string
+  badge: string
+  badge_emoji: string
 }
 
 export interface ConversationAnalysisResponse {
   summary: string
-  users_feedback: Record<string, UserFeedback>
+  users_feedbacks: UserFeedback[]
 }
 
 export const getConversationAnalysis = async (

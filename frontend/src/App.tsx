@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/sonner'
 import WelcomeScreen from '@/components/auth/WelcomeScreen'
 import LoginDialog from '@/components/auth/LoginDialog'
 import ChatPage from '@/components/chat/ChatPage'
+import ProfilePage from '@/components/profile/ProfilePage'
 import { useAuth } from '@/hooks/useAuth'
 import { showToast } from '@/lib/toast'
 
@@ -28,6 +29,7 @@ function App() {
   const [currentConversation, setCurrentConversation] =
     useState<ConversationResponse | null>(null)
   const [isJoiningConversation, setIsJoiningConversation] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
 
   // Handle URL-based conversation joining
   useEffect(() => {
@@ -62,6 +64,7 @@ function App() {
     logout()
     setShowLogin(true)
     setCurrentConversation(null)
+    setShowProfile(false)
   }
 
   const handleJoinConversationFromUrl = async (conversationId: string) => {
@@ -142,7 +145,9 @@ function App() {
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <div className="h-[100svh] bg-background text-foreground flex flex-col">
           <main className="flex-1 min-h-0">
-            {currentConversation && user ? (
+            {showProfile && user ? (
+              <ProfilePage user={user} onBack={() => setShowProfile(false)} />
+            ) : currentConversation && user ? (
               <ChatPage
                 conversation={currentConversation}
                 user={user}
@@ -155,6 +160,7 @@ function App() {
                 onLogin={() => setShowLogin(true)}
                 onLogout={handleLogout}
                 onJoinChat={handleJoinChat}
+                onOpenProfile={() => setShowProfile(true)}
               />
             )}
           </main>

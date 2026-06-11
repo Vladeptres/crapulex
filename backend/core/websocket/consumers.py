@@ -190,3 +190,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 },
             ),
         )
+
+    # Handle reveal readiness counter updates
+    async def reveal_ready_changed(self, event):
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "reveal_ready_changed",
+                    "conversation_id": event["conversation_id"],
+                    "ready_count": event["ready_count"],
+                    "member_count": event["member_count"],
+                    "changed_by": event.get("changed_by"),
+                },
+            ),
+        )
+
+    # Handle the reveal firing for everyone simultaneously
+    async def reveal_triggered(self, event):
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "reveal_triggered",
+                    "conversation_id": event["conversation_id"],
+                },
+            ),
+        )
+
+    # Handle analysis lifecycle notifications (badges available once complete)
+    async def analysis_status_changed(self, event):
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "analysis_status_changed",
+                    "conversation_id": event["conversation_id"],
+                    "analysis_status": event["analysis_status"],
+                },
+            ),
+        )

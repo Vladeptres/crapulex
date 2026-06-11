@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from loguru import logger
 from pymongo import MongoClient
 
@@ -89,6 +91,7 @@ class ConversationsStore:
         user_id: str,
         pseudo: str | None = None,
         smiley: str | None = None,
+        timer_warning_dismissed: bool | None = None,
     ) -> ConversationUser:
         """Update user data in a conversation"""
         # Get current user data or create new
@@ -100,6 +103,8 @@ class ConversationsStore:
             current_user.pseudo = pseudo
         if smiley is not None:
             current_user.smiley = smiley
+        if timer_warning_dismissed is not None:
+            current_user.timer_warning_dismissed = timer_warning_dismissed
 
         # Update in database
         self.conversations_collection.update_one(
@@ -113,3 +118,40 @@ class ConversationsStore:
         """Get user data for a specific user in a conversation"""
         conversation = self.get_conversation(conversation_id)
         return conversation.users.get(user_id)
+
+    def set_last_message_at(
+        self,
+        conversation_id: str,
+        user_id: str,
+        message_type: str,
+        timestamp: datetime,
+    ) -> None:
+        """Record the last send time for a given message type (per-type cooldown)."""
+        self.conversations_collection.update_one(
+            {"id": conversation_id},
+            {"$set": {f"users.{user_id}.last_message_at.{message_type}": timestamp}},
+        )
+        logger.info(
+            f"Set last_message_at[{message_type}] for user {user_id} in conversation {conversation_id}",
+        )
+
+    def add_reveal_ready_user(self, conversation_id: str, user_id: str) -> None:
+        """Add a user to the reveal-ready list (idempotent)."""
+        self.conversations_collection.update_one(
+            {"id": conversation_id},
+            {"$addToSet": {"reveal_ready_user_ids": user_id}},
+        )
+
+    def set_revealed(self, conversation_id: str) -> None:
+        """Mark the conversation as revealed (permanent)."""
+        self.conversations_collection.update_one(
+            {"id": conversation_id},
+            {"$set": {"is_revealed": True}},
+        )
+
+    def set_analysis_status(self, conversation_id: str, status: str) -> None:
+        """Update the analysis lifecycle status."""
+        self.conversations_collection.update_one(
+            {"id": conversation_id},
+            {"$set": {"analysis_status": status}},
+        )
